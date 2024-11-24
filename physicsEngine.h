@@ -3,6 +3,7 @@
 #include <SFML/Graphics.hpp>
 #include <sstream>
 #include <cmath>
+
 #include <iostream>
 using namespace sf;
 class physicsEngine
@@ -10,11 +11,13 @@ class physicsEngine
 public:
     physicsEngine();
     void applyConstraints();
+    void iterate();
     bool rectCollision(RectangleShape r1, RectangleShape r2);
     bool buttonCollision(Vector2i mousePos, RectangleShape button);
     void createBall(Vector2f position, bool shouldBeStatic, bool shouldCollide);
     void addConstraint(int firstElement, int secondElement, std::string constraintType);
     void addConstraint(int firstElement, int secondElement, std::string constraintType, float maxDist);
+    void removeConstraint(int firstElement, int secondElement);
     std::string toString(int n);
     float getDist(Vector2f pos1, Vector2f pos2);
     void drawLine(Vector2f pos1, Vector2f pos2, RenderWindow *window);
@@ -33,10 +36,10 @@ public:
         Color color;
         Vector2f anchorPoint;
         void collide();
-        int anchorPointsIndex[100];
+        int anchorPointsIndex[1000];
         int anchorCount;
-        std::string constraintMode[100];
-        int maxDist[100];
+        std::string constraintMode[1000];
+        int maxDist[1000];
         void applyConstraints(ball balls, int subSteps);
         float friction;
         ball(){
