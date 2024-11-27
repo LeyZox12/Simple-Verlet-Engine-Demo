@@ -2,6 +2,7 @@
 #include <SFML/Graphics.hpp>
 #include "../../class/physicsEngine.h"
 #include <time.h>
+#include <vector>
 using namespace sf;
 using namespace std;
 typedef Vector2f vec2;
@@ -13,9 +14,10 @@ Texture texture;
 bool UIselection(RectangleShape rect);
 int mode=0;
 int rad = 15;
+int maxThreads = 8;
 int fps();
 int spacing = 2;
-int points = 40;
+int points = 20;
 void addConstraint();
 void removeConstraint();
 bool isHolding;
@@ -23,6 +25,7 @@ bool isPaused;
 bool shouldShow = true;
 bool shouldBeStatic= false;
 int getSelectedBall() ;
+int buttonCount = 10;
 void drag();
 vec2 getTextureRect(int x, int y);
 int firstBall = -1;
@@ -37,47 +40,14 @@ Text paramText;
 vec2 grid(int x,int y, int w);
 RectangleShape cur(vec2(5,5));
 RectangleShape ui[5] = {RectangleShape(vec2(250,540)),RectangleShape(vec2(100,540)), RectangleShape(vec2(960,100)), RectangleShape(vec2(960,100)) };
-RectangleShape buttons[8] = {
-                              RectangleShape(vec2(60,60)),RectangleShape(vec2(60,60)),RectangleShape(vec2(60,60)),RectangleShape(vec2(60,60)),RectangleShape(vec2(60,60)),
-                              RectangleShape(vec2(60,60)),RectangleShape(vec2(60,60)),RectangleShape(vec2(60,60))
-                             };
-/*
-Buttons:
-0->addBall
-1->removeConstraint
-2->addConstraint
-3->moveBallOrRect
-4->shouldBeStatic
-*/
-
-void initialize(){
-    vec2 origin = vec2(300,300);
- /*for(int i =0; i<50; i++){
-
-    gm.balls[gm.ballAmount].sprite.setPosition(vec2(origin.x+i*5, origin.y));
-    gm.balls[gm.ballAmount].sprite.setRadius(5);
-    gm.balls[gm.ballAmount].sprite.setOrigin(vec2(5,5));
-    gm.balls[gm.ballAmount].sprite.setFillColor(Color::Black);
-    gm.createBall(vec2(origin.x+i*5, origin.y), false, true);
-    if(i>0)
-    gm.addConstraint(gm.ballAmount,gm.ballAmount-1,"Rigid");
- }
- /*for(int i=0; i<4; i++){
-    for(int j=1; j<50; j++){
-        gm.createBall(vec2(origin.x+i*1, origin.y), true, true);
-        gm.balls[gm.ballAmount+i].sprite.setPosition(vec2(origin.x+i*5, origin.y));
-        gm.balls[gm.ballAmount+i].sprite.setRadius(5);
-        gm.balls[gm.ballAmount+i].sprite.setOrigin(vec2(5,5));
-        gm.balls[gm.ballAmount+i].sprite.setFillColor(Color::Black);
-        gm.addConstraint(gm.ballAmount+i,gm.ballAmount+i-1,"Rigid");
-    }
- }*/
-}
+vector<RectangleShape> buttons;
+View camera(FloatRect(0,0,960,540));
+vec2 mousePos;
 
 int main()
 {
 
-    initialize();
+
     if(!font.loadFromFile("res/font.ttf"))
         cout <<"Error, could not load font.ttf\n";
     if(!texture.loadFromFile("res/spriteSheet.png"))
@@ -86,8 +56,11 @@ int main()
     paramText.setFont(font);
 
     gm.subSteps = 2;
+    gm.constraintStrength = 0.2;
     cur.setFillColor(Color::Green);
     window.setVerticalSyncEnabled(true);
+    for(int i = 0; i<buttonCount; i++)
+    buttons.emplace_back(RectangleShape(vec2(60,60)));
 
     for(int i =0; i< 4; i++)
         ui[i].setFillColor(Color::Black);
@@ -95,7 +68,7 @@ int main()
         b.setFillColor(Color::White);
 
 
-        for(int i =0; i<8; i++){
+        for(int i =0; i<buttonCount; i++){
             buttons[i].setTextureRect({(i%3)*16,round((i/3))*16,16,16});
             buttons[i].setPosition(grid(i,1,2));
         }
@@ -125,6 +98,10 @@ int main()
         {
             if(e.type == Event::Closed)
                 window.close();
+            if(e.type == Event::MouseMoved)
+            {
+                mousePos = window.mapPixelToCoords(Vector2i(Mouse::getPosition(window).x,Mouse::getPosition(window).y));
+            }
             if(e.type == Event::KeyReleased)
             {
                 if(e.key.code == Keyboard::Left)
@@ -171,18 +148,28 @@ int main()
             if(e.type == Event::MouseWheelScrolled)
             {
                 int scroll = e.mouseWheelScroll.delta;
-                if(scroll<0 && rad>5)
-                    rad += scroll;
-                else if(scroll>0)
-                    rad+=scroll;
+                if(mode == 8)
+                {
+                    scroll *= 100;
+                    float ratioy = camera.getSize().y/camera.getSize().x;
+                    camera.setSize(camera.getSize().x+scroll,camera.getSize().y + scroll*ratioy);
+                }else
+                {
+                    if(scroll<0 && rad>5)
+                        rad += scroll;
+                    else if(scroll>0)
+                        rad+=scroll;
+                }
+
+
             }
             if(e.type == Event::MouseButtonPressed)
             {
 
-                if(Mouse::getPosition(window).x>250
-                        && Mouse::getPosition(window).x < window.getSize().x - 100
-                        && Mouse::getPosition(window).y > 100
-                        && Mouse::getPosition(window).y < window.getSize().y - 100)
+                if(mousePos.x>250
+                        && mousePos.x < window.getSize().x - 100
+                        && mousePos.y > 100
+                        && mousePos.y < window.getSize().y - 100)
                 {
                     isHolding = true;
                     switch (mode)
@@ -201,7 +188,7 @@ int main()
                         addConstraint();
                         break;
                     case(4):{
-                        vec2 mousepos = vec2(Mouse::getPosition(window).x,Mouse::getPosition(window).y);
+                        vec2 mousepos = vec2(mousePos.x,mousePos.y);
                         for(int b=0; b<gm.ballAmount;b++){
                             float dist = gm.getDist(mousepos, gm.balls[b].sprite.getPosition());
                             if(dist < gm.balls[b].sprite.getRadius())
@@ -212,11 +199,8 @@ int main()
                     case(7):
                         double rad = 1/(180/3.14);
 
-                        vec2 origin = vec2(Mouse::getPosition(window).x, Mouse::getPosition(window).y);
-                        std::cout<<origin.x<<"\n";
+                        vec2 origin = vec2(mousePos.x, mousePos.y);
                         int index = gm.ballAmount;
-
-
                         gm.createBall(origin, false, true);
                         gm.balls[gm.ballAmount-1].sprite.setPosition(origin);
                         gm.balls[gm.ballAmount-1].sprite.setRadius(5);
@@ -224,7 +208,6 @@ int main()
                         gm.balls[gm.ballAmount-1].sprite.setFillColor(Color::Black);
                         double ratioAngle = (double)360/points;
                         for(int i = 0; i<points; i++){
-
                             gm.createBall(origin, false, true);
                             gm.balls[gm.ballAmount-1].sprite.setPosition(origin.x+sin(gm.ballAmount*ratioAngle*rad) * 50 , origin.y+cos(gm.ballAmount*ratioAngle*rad) * 50 );
                             gm.balls[gm.ballAmount-1].sprite.setRadius(5);
@@ -240,17 +223,19 @@ int main()
                     }
 
                 }
+
                 int i =0;
                 for(auto& b: buttons)
                 {
                     if(UIselection(b))
                         mode = i;
+
                     i++;
                 }
                 if(UIselection(buttons[4]))
                 {
                     shouldBeStatic = !shouldBeStatic;
-                    buttons[9].setTextureRect({shouldBeStatic? 16:32,shouldBeStatic? 16:32,16,16});
+                    buttons[4].setTextureRect({shouldBeStatic? 32:16,shouldBeStatic? 48:16,16,16});
                 }
                 if(UIselection(buttons[6]))
                     shouldShow = !shouldShow;
@@ -268,17 +253,17 @@ int main()
         CircleShape preview(rad);
         if(mode==0 || mode == 5)
         {
-            preview.setPosition(Mouse::getPosition(window).x,Mouse::getPosition(window).y);
+            preview.setPosition(mousePos.x,mousePos.y);
             preview.setOrigin(rad,rad);
             preview.setFillColor(Color(50,50,50,50));
         }
         if(mode == 3&&isHolding)
             drag();
-        cur.setPosition(Mouse::getPosition(window).x, Mouse::getPosition(window).y);
+        cur.setPosition(mousePos.x, mousePos.y);
         if(mode == 5 && isHolding){
             static int d=0;
             if(firstBall!=-1)
-                d = gm.getDist(gm.balls[firstBall].sprite.getPosition(),vec2(Mouse::getPosition(window).x, Mouse::getPosition(window).y));
+                d = gm.getDist(gm.balls[firstBall].sprite.getPosition(),vec2(mousePos.x, mousePos.y));
             if(d>rad*spacing || firstBall ==-1)
             {
 
@@ -293,12 +278,14 @@ int main()
 
             }
         }
-        if(!isPaused)
-            gm.applyConstraints();
 
+        if(!isPaused)
+            gm.applyConstraints(maxThreads);
+        cout << mousePos.x << endl << mousePos.y << endl;
         window.clear(Color::White);
         window.setTitle("Physics Playground FPS:" + gm.toString(fps()));
 //DRAW HERE
+        window.setView(camera);
         for(RectangleShape u: ui)
             window.draw(u);
         for(RectangleShape b:buttons)
@@ -363,6 +350,8 @@ int main()
             selectionCircle.setOrigin(selectedBallRadius-3,selectedBallRadius-3);
             window.draw(selectionCircle);
         }
+        for(auto& r: gm.rects)
+            window.draw(r);
         window.display();
 
     }
@@ -431,7 +420,7 @@ int getSelectedBall()  // if ball is found return i else return 0, true index = 
 {
     for(int i = 0; i<gm.ballAmount; i++)
     {
-        if(gm.getDist(vec2(Mouse::getPosition(window).x,Mouse::getPosition(window).y), gm.balls[i].sprite.getPosition()) < gm.balls[i].sprite.getRadius()*2)
+        if(gm.getDist(vec2(mousePos.x,mousePos.y), gm.balls[i].sprite.getPosition()) < gm.balls[i].sprite.getRadius())
         {
 
             return i+1;
@@ -456,7 +445,7 @@ void drag()
     {
         for(int i =0; i<gm.ballAmount; i++)
         {
-            int dist = gm.getDist(Vector2f(Mouse::getPosition(window).x, Mouse::getPosition(window).y), gm.balls[i].sprite.getPosition());
+            int dist = gm.getDist(Vector2f(mousePos.x, mousePos.y), gm.balls[i].sprite.getPosition());
 
             if( dist < gm.balls[i].sprite.getRadius()*2)
             {
@@ -465,8 +454,8 @@ void drag()
         }
     }
     else if(isHolding && targetIndex != -1)
-        //gm.balls[targetIndex].acc=vec2((Mouse::getPosition(window).x-gm.balls[targetIndex].sprite.getPosition().x)/2, (Mouse::getPosition(window).y-gm.balls[targetIndex].sprite.getPosition().y)/2);
-        gm.balls[targetIndex].sprite.move((Mouse::getPosition(window).x-gm.balls[targetIndex].sprite.getPosition().x)/2, (Mouse::getPosition(window).y-gm.balls[targetIndex].sprite.getPosition().y)/2);
+        //gm.balls[targetIndex].acc=vec2((mousePos.x-gm.balls[targetIndex].sprite.getPosition().x)/2, (mousePos.y-gm.balls[targetIndex].sprite.getPosition().y)/2);
+        gm.balls[targetIndex].sprite.move((mousePos.x-gm.balls[targetIndex].sprite.getPosition().x)/2, (mousePos.y-gm.balls[targetIndex].sprite.getPosition().y)/2);
     else if(!isHolding && targetIndex !=-1)
     {
         gm.balls[targetIndex].acc = Vector2f(0,0);
@@ -482,7 +471,7 @@ float clamp(float minv, float maxv, float v){
         return v;
 }
 vec2 grid(int x,int y, int w){
-    vec2 origin = vec2(100,140);
+    vec2 origin = vec2(100,50);
     y+=round(x/2);
     return vec2(origin.x +70*(x%w), origin.y+70*y);
 }
