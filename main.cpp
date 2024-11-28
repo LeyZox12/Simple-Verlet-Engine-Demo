@@ -42,32 +42,31 @@ void initialize();
 Text paramText;
 vec2 grid(int x,int y, int w);
 RectangleShape cur(vec2(5,5));
-RectangleShape ui[5] = {RectangleShape(vec2(250,540)),RectangleShape(vec2(100,540)), RectangleShape(vec2(960,100)), RectangleShape(vec2(960,100)) };
+RectangleShape ui[2] = {RectangleShape(vec2(300,540)), RectangleShape(vec2(960,100)) };
 vector<RectangleShape> buttons;
-
+void start();
+void applyUIAnchors();
 View camera(FloatRect(0,0,960,540));
 vec2 mousePos;
-
-int main()
+void start()
 {
-
-
     if(!font.loadFromFile("res/font.ttf"))
         cout <<"Error, could not load font.ttf\n";
     if(!texture.loadFromFile("res/spriteSheet.png"))
         cout<<"Error, could not load spriteSheet.png\n";
     paramText.setPosition(0,0);
     paramText.setFont(font);
-
+    paramText.setColor(Color::Black);
     gm.subSteps = 2;
     gm.constraintStrength = 0.2;
     cur.setFillColor(Color::Green);
     window.setVerticalSyncEnabled(true);
+    window.setKeyRepeatEnabled(true);
     for(int i = 0; i<buttonCount; i++)
         buttons.emplace_back(RectangleShape(vec2(60,60)));
 
-    for(int i =0; i< 4; i++)
-        ui[i].setFillColor(Color::Black);
+    for(auto& u: ui)
+        u.setFillColor(Color::Black);
     for(auto& b:buttons)
         b.setFillColor(Color::White);
 
@@ -91,11 +90,15 @@ int main()
     }
 
     //Remplis les espaces vide par des espaces
-    ui[1].setPosition(860,0);
+    ui[1].setPosition(0,1080);
     ui[2].setPosition(0,0);
-    ui[3].setPosition(0,1080);
 
 
+
+}
+int main()
+{
+    start();
     while (window.isOpen())
     {
         while(window.pollEvent(e))
@@ -110,12 +113,18 @@ int main()
                     Vector2f delta = window.mapPixelToCoords(Vector2i(Mouse::getPosition(window).x,Mouse::getPosition(window).y)) - mousePos;
                     camera.move(delta*-cameraSpeed);
                 }
-
                 mousePos = window.mapPixelToCoords(Vector2i(Mouse::getPosition(window).x,Mouse::getPosition(window).y));
-
             }
             if(e.type == Event::KeyReleased)
             {
+                int selected = getSelectedBall();
+                if(e.key.code == Keyboard::Delete && selected!=-1)
+                {
+                    for(int i :gm.balls[selected].anchorPointsIndex)
+                        gm.removeConstraint(i,selected);
+                    gm.balls[selected] = gm.balls[gm.ballAmount];
+
+                }
                 if(e.key.code == Keyboard::Left)
                     switch(mode)
                     {
@@ -198,7 +207,8 @@ int main()
                 {
                     isHolding = true;
 
-
+                    if(!UIselection(ui[0]))
+                    {
                         switch (mode)
                         {
                         case(0):
@@ -250,7 +260,9 @@ int main()
                             gm.addConstraint(index+1, gm.ballAmount-1,"Rigid");
                             break;
                         }
-                }else if(e.mouseButton.button == Mouse::Middle)
+                    }
+                }
+                else if(e.mouseButton.button == Mouse::Middle)
                     isMovingCamera = true;
                 int i =0;
 
@@ -277,8 +289,9 @@ int main()
                     targetIndex = -1;
                     firstBall= -1;
                     isHolding= false;
-                }else if(e.mouseButton.button == Mouse::Middle)
-                        isMovingCamera = false;
+                }
+                else if(e.mouseButton.button == Mouse::Middle)
+                    isMovingCamera = false;
 
             }
             if(e.type == Event::KeyPressed && e.key.code == Keyboard::Space)
@@ -295,7 +308,7 @@ int main()
         }
         if(mode == 3&&isHolding)
             drag();
-        if(mode == 5 && isHolding)
+        else if(mode == 5 && isHolding && !UIselection(ui[0]))
         {
             static int d=0;
             if(firstBall!=-1)
@@ -321,12 +334,9 @@ int main()
         window.clear(Color::White);
         window.setTitle("Physics Playground FPS:" + gm.toString(fps()));
 //DRAW HERE
-        window.setView(camera);
-        for(RectangleShape u: ui)
-            window.draw(u);
-        for(RectangleShape b:buttons)
-            window.draw(b);
 
+        window.setView(camera);
+        applyUIAnchors();
         window.draw(paramText);
         for(int i =0; i<gm.ballAmount; i++)
         {
@@ -336,14 +346,10 @@ int main()
                 gm.balls[i].acc.y +=98.8;
                 gm.balls[i].upDatePos((float)1/60);
             }
-            if(gm.balls[i].sprite.getPosition().y <= 100+gm.balls[i].sprite.getRadius())
+
+            if(gm.balls[i].sprite.getPosition().y >= 1080-gm.balls[i].sprite.getRadius())
             {
-                gm.balls[i].sprite.setPosition(gm.balls[i].sprite.getPosition().x,100+gm.balls[i].sprite.getRadius());
-                gm.balls[i].updateFriction();
-            }
-            else if(gm.balls[i].sprite.getPosition().y >= 1080-gm.balls[i].sprite.getRadius())
-            {
-                gm.balls[i].sprite.setPosition(gm.balls[i].sprite.getPosition().x,window.getSize().y-gm.balls[i].sprite.getRadius());
+                gm.balls[i].sprite.setPosition(gm.balls[i].sprite.getPosition().x,1080-gm.balls[i].sprite.getRadius());
                 gm.balls[i].updateFriction();
 
             }
@@ -353,10 +359,7 @@ int main()
             }
 
 
-            if(gm.balls[i].sprite.getPosition().x <= 250 + gm.balls[i].sprite.getRadius())
-                gm.balls[i].sprite.setPosition(250 + gm.balls[i].sprite.getRadius(), gm.balls[i].sprite.getPosition().y);
-            if(gm.balls[i].sprite.getPosition().x >= 860 - gm.balls[i].sprite.getRadius())
-                gm.balls[i].sprite.setPosition(860-gm.balls[i].sprite.getRadius(),gm.balls[i].sprite.getPosition().y);
+
             VertexArray line(LinesStrip, 2);
             for(int c =0; c<gm.balls[i].anchorCount; c++)
             {
@@ -375,13 +378,13 @@ int main()
         if(mode==0 || mode==5)
             window.draw(preview);
         int selected =getSelectedBall();
-        if(selected>0)
+        if(selected>-1)
         {
-            int selectedBallRadius =gm.balls[selected-1].sprite.getRadius();
+            int selectedBallRadius =gm.balls[selected].sprite.getRadius();
             CircleShape selectionCircle = CircleShape(selectedBallRadius);
             selectionCircle.setFillColor(Color::Green);
             selectionCircle.setOrigin(selectedBallRadius,selectedBallRadius);
-            selectionCircle.setPosition(gm.balls[selected-1].sprite.getPosition());
+            selectionCircle.setPosition(gm.balls[selected].sprite.getPosition());
             window.draw(selectionCircle);
             selectionCircle.setRadius(selectedBallRadius-3);
             selectionCircle.setFillColor(Color::Black);
@@ -390,6 +393,10 @@ int main()
         }
         for(auto& r: gm.rects)
             window.draw(r);
+        for(RectangleShape u: ui)
+            window.draw(u);
+        for(RectangleShape b:buttons)
+            window.draw(b);
         window.display();
 
     }
@@ -398,12 +405,12 @@ int main()
 }
 void addConstraint()
 {
-    if(firstElement >=0)  // if firstElement already assigned
+    if(firstElement >-1)  // if firstElement already assigned
     {
-        if(getSelectedBall() ==0)
+        if(getSelectedBall() ==-1)
             return;
-        else if(getSelectedBall()-1 != firstElement)
-            secondElement =  getSelectedBall()-1;
+        else if(getSelectedBall() != firstElement)
+            secondElement =  getSelectedBall();
         else
             return;
         gm.balls[secondElement].anchorPointsIndex[gm.balls[secondElement].anchorCount] = firstElement;
@@ -420,13 +427,13 @@ void addConstraint()
     else
     {
 
-        if(getSelectedBall() ==0)
+        if(getSelectedBall() ==-1)
         {
             return;
         }
         else
         {
-            firstElement = getSelectedBall()-1;
+            firstElement = getSelectedBall();
         }
     }
 }
@@ -434,24 +441,24 @@ void removeConstraint()
 {
     static int firstElement = -1; // default value
     static int secondElement = -1;
-    if(firstElement >=0)  // if firstElement already assigned
-    {
-        if(getSelectedBall() ==0)
-        {
 
+    if(firstElement !=-1)  // if firstElement already assigned
+    {
+        if(getSelectedBall() ==-1)
+        {
             return;
         }
         else
         {
-            secondElement = getSelectedBall()-1;
+            secondElement = getSelectedBall();
 
         }
         gm.removeConstraint(firstElement,secondElement);
         firstElement = -1;
         secondElement = -1;
     }
-    else if(getSelectedBall()!=0)
-        firstElement = getSelectedBall()-1;
+    else if(getSelectedBall()!=-1)
+        firstElement = getSelectedBall();
 
 }
 int getSelectedBall()  // if ball is found return i else return 0, true index = i - 1
@@ -461,10 +468,10 @@ int getSelectedBall()  // if ball is found return i else return 0, true index = 
         if(gm.getDist(vec2(mousePos.x,mousePos.y), gm.balls[i].sprite.getPosition()) < gm.balls[i].sprite.getRadius())
         {
 
-            return i+1;
+            return i;
         }
     }
-    return 0;
+    return -1;
 }
 bool UIselection(RectangleShape rect)
 {
@@ -537,7 +544,25 @@ int fps()
 bool isMouseOnUI()
 {
     for(auto& u: ui)
-            if(UIselection(u))
-                return true;
+        if(UIselection(u))
+            return true;
     return false;
+}
+void applyUIAnchors()
+{
+    Vector2f origin = window.mapPixelToCoords(Vector2i(0,0));
+    ui[0].setPosition(origin);
+    ui[1].setPosition(window.mapPixelToCoords(Vector2i(0,1080)).x,1080);
+    ui[0].setSize(Vector2f(camera.getSize().x/(940/200) ,camera.getSize().y));
+    ui[1].setSize(Vector2f(camera.getSize().x, camera.getSize().y));
+    paramText.setPosition(Vector2f(origin.x+(940/4)+(camera.getSize().x-940),origin.y+paramText.getCharacterSize()+(camera.getSize().x-940)));
+
+    Vector2f ratioSize = Vector2f(940/60,540/60);
+
+    for(int i = 0; i<buttons.size(); i++)
+    {
+        buttons[i].setSize(Vector2f(camera.getSize().x/ratioSize.x,camera.getSize().y / ratioSize.y));
+        buttons[i].setPosition(Vector2f(origin.x+ui[0].getSize().x/2*(i%2),
+                                        origin.y+ui[0].getSize().y/(buttonCount/2)*floor(i/2)));
+    }
 }
