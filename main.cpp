@@ -16,9 +16,13 @@ int mode=0;
 int rad = 15;
 int maxThreads = 8;
 int fps();
+int currentChain=0;
 int spacing = 2;
 int points = 20;
 float cameraSpeed=0.5;
+float explosionRad = 50.0;
+float explosionPower = 50.0;
+int clothHeight = 5;
 void addConstraint();
 void removeConstraint();
 bool isHolding;
@@ -28,13 +32,15 @@ bool shouldShow = true;
 bool shouldBeStatic= false;
 int getSelectedBall();
 bool isMovingCamera = false;
-int buttonCount = 10;
+bool isExplosionReversed = false;
+int buttonCount = 13;
 void drag();
 vec2 getTextureRect(int x, int y);
 int firstBall = -1;
 int firstElement = -1;
 int secondElement= -1;
 int targetIndex = -1;
+float motorSpeed = 10.0;
 float clamp(float minv, float maxv, float v);
 int currentConstraintMode = 0;
 const string constraintMode[3] = {"Rigid","Rope", "Spring" };
@@ -50,6 +56,7 @@ View camera(FloatRect(0,0,960,540));
 vec2 mousePos;
 void start()
 {
+    camera.move(0,750);
     if(!font.loadFromFile("res/font.ttf"))
         cout <<"Error, could not load font.ttf\n";
     if(!texture.loadFromFile("res/spriteSheet.png"))
@@ -57,7 +64,7 @@ void start()
     paramText.setPosition(0,0);
     paramText.setFont(font);
     paramText.setColor(Color::Black);
-    gm.subSteps = 2;
+    gm.subSteps = 4;
     gm.constraintStrength = 0.2;
     cur.setFillColor(Color::Green);
     window.setVerticalSyncEnabled(true);
@@ -82,19 +89,12 @@ void start()
         window.draw(b);
         b.setTexture(&texture);
     }
-
-
     for(auto& b: buttons)
     {
         b.setSize(vec2(b.getSize().x-15, b.getSize().y-15));
     }
-
-    //Remplis les espaces vide par des espaces
     ui[1].setPosition(0,1080);
     ui[2].setPosition(0,0);
-
-
-
 }
 int main()
 {
@@ -107,7 +107,6 @@ int main()
                 window.close();
             if(e.type == Event::MouseMoved)
             {
-
                 if(isMovingCamera && mode == 8)
                 {
                     Vector2f delta = window.mapPixelToCoords(Vector2i(Mouse::getPosition(window).x,Mouse::getPosition(window).y)) - mousePos;
@@ -118,12 +117,29 @@ int main()
             if(e.type == Event::KeyReleased)
             {
                 int selected = getSelectedBall();
-                if(e.key.code == Keyboard::Delete && selected!=-1)
+                if(e.key.code == Keyboard::F11)
                 {
-                    for(int i :gm.balls[selected].anchorPointsIndex)
-                        gm.removeConstraint(i,selected);
-                    gm.balls[selected] = gm.balls[gm.ballAmount];
 
+                }
+                if(e.key.code == Keyboard::Delete && selected>-1)
+                    gm.removeBall(selected);
+                if(e.key.code == Keyboard::Up)
+                {
+                    switch(mode)
+                    {
+                        case(9):
+                            clothHeight++;
+                            break;
+                    }
+                }
+                if(e.key.code == Keyboard::Down)
+                {
+                    switch(mode)
+                    {
+                        case(9):
+                            clothHeight--;
+                            break;
+                    }
                 }
                 if(e.key.code == Keyboard::Left)
                     switch(mode)
@@ -143,8 +159,17 @@ int main()
                         if(cameraSpeed>0)
                             cameraSpeed-=0.1;
                         break;
+                    case(9):
+                        if(spacing>1)
+                            spacing-=1;
+                        break;
+                    case(11):
+                        explosionPower-=10;
+                        break;
+                    case(12):
+                        motorSpeed-=5;
+                        break;
                     }
-
                 if(e.key.code == Keyboard::Right)
                     switch(mode)
                     {
@@ -161,24 +186,17 @@ int main()
                     case(8):
                         cameraSpeed+=0.1;
                         break;
+                    case(9):
+                        if(spacing>1)
+                            spacing+=1;
+                        break;
+                    case(11):
+                        explosionPower+=10;
+                        break;
+                    case(12):
+                        motorSpeed+=5;
+                        break;
                     }
-                switch(mode)
-                {
-                case(2):
-                    paramText.setString("Constraint mode: " + constraintMode[currentConstraintMode]);
-                    break;
-                case(5):
-                    paramText.setString("Spacing: " +gm.toString(spacing)+" radius");
-                    break;
-                case(7):
-                    paramText.setString("Points: " +gm.toString(points));
-                    break;
-                case(8):
-                    paramText.setString("Mouse Speed:"+gm.toString(cameraSpeed)+","+gm.toString(cameraSpeed*10));
-                    break;
-
-                }
-
             }
             if(e.type == Event::MouseWheelScrolled)
             {
@@ -188,6 +206,13 @@ int main()
                     scroll *= 100;
                     float ratioy = camera.getSize().y/camera.getSize().x;
                     camera.setSize(camera.getSize().x-scroll,camera.getSize().y - scroll*ratioy);
+                }
+                else if(mode==11)
+                {
+                    if(scroll<0 && rad>5)
+                        explosionRad += scroll;
+                    else if(scroll>0)
+                        explosionRad+=scroll;
                 }
                 else
                 {
@@ -234,8 +259,9 @@ int main()
                                     gm.balls[b].isStatic = !gm.balls[b].isStatic;
                             }
                         }
-                        break;
+                            break;
                         case(7):
+                        {
                             double rad = 1/(180/3.14);
 
                             vec2 origin = vec2(mousePos.x, mousePos.y);
@@ -254,10 +280,14 @@ int main()
                                 gm.balls[gm.ballAmount-1].sprite.setOrigin(5,5);
                                 gm.balls[gm.ballAmount-1].sprite.setFillColor(Color::Black);
                                 gm.balls[gm.ballAmount-1].friction=1.0;
-                                gm.addConstraint(gm.ballAmount-1,gm.ballAmount-2,"Rigid");
-                                gm.addConstraint(gm.ballAmount-1,index,"Rigid");
+                                gm.addConstraint(gm.ballAmount-1,gm.ballAmount-2,constraintMode[currentConstraintMode]);
+                                gm.addConstraint(gm.ballAmount-1,index,constraintMode[currentConstraintMode]);
                             }
-                            gm.addConstraint(index+1, gm.ballAmount-1,"Rigid");
+                            gm.addConstraint(index+1, gm.ballAmount-1,constraintMode[currentConstraintMode]);
+                        }
+                            break;
+                        case(11):
+                            gm.generateExplosion(mousePos,explosionRad,explosionPower*isExplosionReversed?-1:1);
                             break;
                         }
                     }
@@ -273,13 +303,19 @@ int main()
 
                     i++;
                 }
+
                 if(UIselection(buttons[4]))
                 {
                     shouldBeStatic = !shouldBeStatic;
-                    buttons[4].setTextureRect({shouldBeStatic? 32:16,shouldBeStatic? 48:16,16,16});
+                    buttons[4].setTextureRect({shouldBeStatic? 32:16,shouldBeStatic? 64:16,16,16});
                 }
-                if(UIselection(buttons[6]))
+                else if(UIselection(buttons[6]))
                     shouldShow = !shouldShow;
+                else if(UIselection(buttons[11]))
+                {
+                    isExplosionReversed = !isExplosionReversed;
+                    buttons[11].setTextureRect({isExplosionReversed? 16:32, isExplosionReversed? 64:48,16,16 });
+                }
             }
 
             if(e.type == Event::MouseButtonReleased)
@@ -288,6 +324,7 @@ int main()
                 {
                     targetIndex = -1;
                     firstBall= -1;
+                    currentChain = 0;
                     isHolding= false;
                 }
                 else if(e.mouseButton.button == Mouse::Middle)
@@ -298,13 +335,44 @@ int main()
                 isPaused = !isPaused;
 
         }
-        CircleShape preview(rad);
-
-        if(mode==0 || mode == 5)
+        CircleShape preview;
+        switch(mode)
+            {
+            case(2):
+                paramText.setString("Constraint mode: " + constraintMode[currentConstraintMode]);
+                break;
+            case(5):
+                paramText.setString("Spacing: " +gm.toString(spacing)+" radius");
+                break;
+            case(7):
+                paramText.setString("Points: " +gm.toString(points));
+                break;
+            case(8):
+                paramText.setString("Mouse Speed:"+gm.toString(cameraSpeed*10));
+                break;
+            case(9):
+                paramText.setString("Spacing: " +gm.toString(spacing)+" radius\nHeight:"+gm.toString(clothHeight));
+                break;
+            case(11):
+                paramText.setString("Explosion Power:"+gm.toString(explosionPower));
+                break;
+            default:
+                paramText.setString("");
+                break;
+            }
+        if(mode==0 || mode == 5|| mode==9)
         {
+            preview.setRadius(rad);
             preview.setPosition(mousePos.x,mousePos.y);
             preview.setOrigin(rad,rad);
             preview.setFillColor(Color(50,50,50,50));
+        }
+        else if(mode==11)
+        {
+            preview.setRadius(explosionRad);
+            preview.setPosition(mousePos.x, mousePos.y);
+            preview.setOrigin(explosionRad,explosionRad);
+            preview.setFillColor(Color(255,0,0,50));
         }
         if(mode == 3&&isHolding)
             drag();
@@ -318,12 +386,56 @@ int main()
 
                 gm.createBall(mousePos, shouldBeStatic, true);
                 if(firstBall != -1)
-                    gm.addConstraint(firstBall, gm.ballAmount-1,"Rigid");
+                    gm.addConstraint(firstBall, gm.ballAmount-1,constraintMode[currentConstraintMode]);
                 gm.balls[gm.ballAmount-1].friction = 0.5;
                 gm.balls[gm.ballAmount-1].sprite.setFillColor(Color::Black);
                 gm.balls[gm.ballAmount-1].sprite.setRadius(rad);
                 gm.balls[gm.ballAmount-1].sprite.setOrigin(vec2(rad,rad));
                 firstBall = gm.ballAmount-1;
+
+            }
+        }
+        else if(mode == 9 && isHolding && !UIselection(ui[0]))
+        {
+            static int d=0;
+            if(firstBall!=-1)
+                d = gm.getDist(gm.balls[firstBall].sprite.getPosition(),vec2(mousePos.x, mousePos.y));
+            if(d>rad*spacing || firstBall ==-1)
+            {
+
+                gm.createBall(mousePos, shouldBeStatic, true);
+                currentChain++;
+                if(firstBall != -1)
+                {
+                    gm.addConstraint(firstBall, gm.ballAmount-1,constraintMode[currentConstraintMode]);
+                }
+
+                gm.balls[gm.ballAmount-1].friction = 0.5;
+                gm.balls[gm.ballAmount-1].sprite.setFillColor(Color::Black);
+                gm.balls[gm.ballAmount-1].sprite.setRadius(rad);
+                gm.balls[gm.ballAmount-1].sprite.setOrigin(vec2(rad,rad));
+                firstBall = gm.ballAmount-1;
+                Vector2f ballPos = gm.balls[firstBall].sprite.getPosition();
+                for(int i = 0; i<clothHeight; i++)
+                {
+                    gm.createBall(Vector2f(ballPos.x,ballPos.y +spacing*rad*(i+1)) ,shouldBeStatic,true);
+                    gm.balls[gm.ballAmount-1].friction = 0.5;
+                    gm.balls[gm.ballAmount-1].sprite.setFillColor(Color::Black);
+                    gm.balls[gm.ballAmount-1].sprite.setRadius(rad);
+                    gm.balls[gm.ballAmount-1].sprite.setOrigin(vec2(rad,rad));
+                    gm.addConstraint(gm.ballAmount-2,gm.ballAmount-1,constraintMode[currentConstraintMode]);
+
+                }
+
+                if(currentChain>1)
+                {
+                    for(int j = 0; j<clothHeight; j++)
+                    {
+                        cout << gm.ballAmount-(clothHeight-j)<<endl;
+                        gm.addConstraint(gm.ballAmount-(clothHeight*2)+j-1,gm.ballAmount-clothHeight+j,constraintMode[currentConstraintMode]);
+                    }
+                }
+
 
             }
         }
@@ -375,7 +487,7 @@ int main()
         }
 
 
-        if(mode==0 || mode==5)
+        if(mode==0 || mode==5 || mode==9 || mode==11)
             window.draw(preview);
         int selected =getSelectedBall();
         if(selected>-1)
@@ -555,14 +667,14 @@ void applyUIAnchors()
     ui[1].setPosition(window.mapPixelToCoords(Vector2i(0,1080)).x,1080);
     ui[0].setSize(Vector2f(camera.getSize().x/(940/200) ,camera.getSize().y));
     ui[1].setSize(Vector2f(camera.getSize().x, camera.getSize().y));
-    paramText.setPosition(Vector2f(origin.x+(940/4)+(camera.getSize().x-940),origin.y+paramText.getCharacterSize()+(camera.getSize().x-940)));
-
+    paramText.setPosition(window.mapPixelToCoords(Vector2i((940),paramText.getCharacterSize())));
+    paramText.setScale(Vector2f(camera.getSize().x / 940, camera.getSize().y/540));
     Vector2f ratioSize = Vector2f(940/60,540/60);
 
     for(int i = 0; i<buttons.size(); i++)
     {
         buttons[i].setSize(Vector2f(camera.getSize().x/ratioSize.x,camera.getSize().y / ratioSize.y));
         buttons[i].setPosition(Vector2f(origin.x+ui[0].getSize().x/2*(i%2),
-                                        origin.y+ui[0].getSize().y/(buttonCount/2)*floor(i/2)));
+                                        origin.y+ui[0].getSize().y/ceil((float)buttonCount/2)*floor(i/2)));
     }
 }

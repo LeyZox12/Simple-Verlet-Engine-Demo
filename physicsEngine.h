@@ -3,25 +3,29 @@
 #include <SFML/Graphics.hpp>
 #include <sstream>
 #include <cmath>
-
+#include <vector>
 #include <iostream>
 using namespace sf;
 class physicsEngine
 {
 public:
     physicsEngine();
-    void applyConstraints();
+    void applyConstraints(int maxThreads);
+    void applyConstraintsThread(int startingPoint, int endPoint);
     void iterate();
     bool rectCollision(RectangleShape r1, RectangleShape r2);
     bool buttonCollision(Vector2i mousePos, RectangleShape button);
     void createBall(Vector2f position, bool shouldBeStatic, bool shouldCollide);
     void addConstraint(int firstElement, int secondElement, std::string constraintType);
     void addConstraint(int firstElement, int secondElement, std::string constraintType, float maxDist);
+    void removeBall(int ballIndex);
     void removeConstraint(int firstElement, int secondElement);
     std::string toString(int n);
     float getDist(Vector2f pos1, Vector2f pos2);
     void drawLine(Vector2f pos1, Vector2f pos2, RenderWindow *window);
     Vector2f normalize(Vector2f vec);
+    bool ballRectCollision(CircleShape ball, RectangleShape rect);
+    void generateExplosion(Vector2f position, float rad, float pow);
     class ball
     {
     public:
@@ -40,8 +44,10 @@ public:
         int anchorCount;
         std::string constraintMode[1000];
         int maxDist[1000];
+
         void applyConstraints(ball balls, int subSteps);
         float friction;
+
         ball(){
 
         }
@@ -82,8 +88,11 @@ public:
 
     };
 int subSteps=2;
-int ballAmount=0;
+int ballAmount;
+float constraintStrength = 0.1;
+float springStrength = 0.01;
 ball balls[20000];
+std::vector<RectangleShape> rects;
 protected:
 
 private:
