@@ -127,18 +127,18 @@ int main()
                 {
                     switch(mode)
                     {
-                        case(9):
-                            clothHeight++;
-                            break;
+                    case(9):
+                        clothHeight++;
+                        break;
                     }
                 }
                 if(e.key.code == Keyboard::Down)
                 {
                     switch(mode)
                     {
-                        case(9):
-                            clothHeight--;
-                            break;
+                    case(9):
+                        clothHeight--;
+                        break;
                     }
                 }
                 if(e.key.code == Keyboard::Left)
@@ -259,7 +259,7 @@ int main()
                                     gm.balls[b].isStatic = !gm.balls[b].isStatic;
                             }
                         }
-                            break;
+                        break;
                         case(7):
                         {
                             double rad = 1/(180/3.14);
@@ -285,7 +285,7 @@ int main()
                             }
                             gm.addConstraint(index+1, gm.ballAmount-1,constraintMode[currentConstraintMode]);
                         }
-                            break;
+                        break;
                         case(11):
                             gm.generateExplosion(mousePos,explosionRad,explosionPower*isExplosionReversed?-1:1);
                             break;
@@ -337,29 +337,29 @@ int main()
         }
         CircleShape preview;
         switch(mode)
-            {
-            case(2):
-                paramText.setString("Constraint mode: " + constraintMode[currentConstraintMode]);
-                break;
-            case(5):
-                paramText.setString("Spacing: " +gm.toString(spacing)+" radius");
-                break;
-            case(7):
-                paramText.setString("Points: " +gm.toString(points));
-                break;
-            case(8):
-                paramText.setString("Mouse Speed:"+gm.toString(cameraSpeed*10));
-                break;
-            case(9):
-                paramText.setString("Spacing: " +gm.toString(spacing)+" radius\nHeight:"+gm.toString(clothHeight));
-                break;
-            case(11):
-                paramText.setString("Explosion Power:"+gm.toString(explosionPower));
-                break;
-            default:
-                paramText.setString("");
-                break;
-            }
+        {
+        case(2):
+            paramText.setString("Constraint mode: " + constraintMode[currentConstraintMode]);
+            break;
+        case(5):
+            paramText.setString("Spacing: " +gm.toString(spacing)+" radius");
+            break;
+        case(7):
+            paramText.setString("Points: " +gm.toString(points));
+            break;
+        case(8):
+            paramText.setString("Mouse Speed:"+gm.toString(cameraSpeed*10));
+            break;
+        case(9):
+            paramText.setString("Spacing: " +gm.toString(spacing)+" radius\nHeight:"+gm.toString(clothHeight));
+            break;
+        case(11):
+            paramText.setString("Explosion Power:"+gm.toString(explosionPower));
+            break;
+        default:
+            paramText.setString("");
+            break;
+        }
         if(mode==0 || mode == 5|| mode==9)
         {
             preview.setRadius(rad);
@@ -418,7 +418,7 @@ int main()
                 Vector2f ballPos = gm.balls[firstBall].sprite.getPosition();
                 for(int i = 0; i<clothHeight; i++)
                 {
-                    gm.createBall(Vector2f(ballPos.x,ballPos.y +spacing*rad*(i+1)) ,shouldBeStatic,true);
+                    gm.createBall(Vector2f(ballPos.x,ballPos.y +spacing*rad*(i+1)),shouldBeStatic,true);
                     gm.balls[gm.ballAmount-1].friction = 0.5;
                     gm.balls[gm.ballAmount-1].sprite.setFillColor(Color::Black);
                     gm.balls[gm.ballAmount-1].sprite.setRadius(rad);
@@ -435,8 +435,6 @@ int main()
                         gm.addConstraint(gm.ballAmount-(clothHeight*2)+j-1,gm.ballAmount-clothHeight+j,constraintMode[currentConstraintMode]);
                     }
                 }
-
-
             }
         }
 
@@ -665,7 +663,7 @@ void applyUIAnchors()
     Vector2f origin = window.mapPixelToCoords(Vector2i(0,0));
     ui[0].setPosition(origin);
     ui[1].setPosition(window.mapPixelToCoords(Vector2i(0,1080)).x,1080);
-    ui[0].setSize(Vector2f(camera.getSize().x/(940/200) ,camera.getSize().y));
+    ui[0].setSize(Vector2f(camera.getSize().x/(940/200),camera.getSize().y));
     ui[1].setSize(Vector2f(camera.getSize().x, camera.getSize().y));
     paramText.setPosition(window.mapPixelToCoords(Vector2i((940),paramText.getCharacterSize())));
     paramText.setScale(Vector2f(camera.getSize().x / 940, camera.getSize().y/540));
