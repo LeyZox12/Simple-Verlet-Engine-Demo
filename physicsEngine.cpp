@@ -100,7 +100,7 @@ void physicsEngine::removeBall(int ballIndex)
             int index = balls[ballIndex].anchorPointsIndex[i];
             removeConstraint(index,ballIndex);
         }
-    if(ballIndex < ballAmount - 1)
+    /*if(ballIndex < ballAmount - 1)
     {
         aCount = balls[ballAmount-1].anchorCount;
         balls[ballIndex] = balls[ballAmount-1];
@@ -110,15 +110,13 @@ void physicsEngine::removeBall(int ballIndex)
         }
         for(int i = 0; i < aCount; i++)
         {
-
-
             int otherIndex = balls[ballAmount-1].anchorPointsIndex[i];
             for(int j = 0; j < balls[otherIndex].anchorCount; j++)
                 if(balls[otherIndex].anchorPointsIndex[j] == ballAmount - 1)
                     balls[otherIndex].anchorPointsIndex[j] = ballIndex;
         }
     }
-    ballAmount--;
+    ballAmount--;*/
 }
 void physicsEngine::applyConstraintsThread(int startingPoint,int endPoint)
 {

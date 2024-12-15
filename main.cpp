@@ -19,41 +19,47 @@ int fps();
 int currentChain=0;
 int spacing = 2;
 int points = 20;
+int clothHeight = 5;
+int getSelectedBall();
+int firstBall = -1;
+int firstElement = -1;
+int secondElement= -1;
+int targetIndex = -1;
+int buttonCount = 13;
+int currentConstraintMode = 0;
 float cameraSpeed=0.5;
 float explosionRad = 50.0;
 float explosionPower = 50.0;
-int clothHeight = 5;
-void addConstraint();
-void removeConstraint();
+float motorSpeed = 10.0;
+float clamp(float minv, float maxv, float v);
 bool isHolding;
 bool isMouseOnUI();
 bool isPaused;
 bool shouldShow = true;
 bool shouldBeStatic= false;
-int getSelectedBall();
 bool isMovingCamera = false;
 bool isExplosionReversed = false;
-int buttonCount = 13;
+bool selectionOriginDefined = false;
+void addConstraint();
+void removeConstraint();
 void drag();
-vec2 getTextureRect(int x, int y);
-int firstBall = -1;
-int firstElement = -1;
-int secondElement= -1;
-int targetIndex = -1;
-float motorSpeed = 10.0;
-float clamp(float minv, float maxv, float v);
-int currentConstraintMode = 0;
-const string constraintMode[3] = {"Rigid","Rope", "Spring" };
-void initialize();
-Text paramText;
-vec2 grid(int x,int y, int w);
-RectangleShape cur(vec2(5,5));
-RectangleShape ui[2] = {RectangleShape(vec2(300,540)), RectangleShape(vec2(960,100)) };
-vector<RectangleShape> buttons;
 void start();
 void applyUIAnchors();
-View camera(FloatRect(0,0,960,540));
+void multSelect();
+void initialize();
+void drawOutline(int index);
+vec2 grid(int x,int y, int w);
 vec2 mousePos;
+vec2 getTextureRect(int x, int y);
+vec2 mouseDelta;
+vector<int> multSelection;
+vector<RectangleShape> buttons;
+const string constraintMode[3] = {"Rigid","Rope", "Spring" };
+Text paramText;
+RectangleShape cur(vec2(5,5));
+RectangleShape ui[2] = {RectangleShape(vec2(300,540)), RectangleShape(vec2(960,100))};
+RectangleShape selectionRect;
+View camera(FloatRect(0,0,960,540));
 void start()
 {
     camera.move(0,750);
@@ -112,7 +118,10 @@ int main()
                     Vector2f delta = window.mapPixelToCoords(Vector2i(Mouse::getPosition(window).x,Mouse::getPosition(window).y)) - mousePos;
                     camera.move(delta*-cameraSpeed);
                 }
-                mousePos = window.mapPixelToCoords(Vector2i(Mouse::getPosition(window).x,Mouse::getPosition(window).y));
+                vec2 newPos = window.mapPixelToCoords(Vector2i(Mouse::getPosition(window).x,Mouse::getPosition(window).y));
+                mouseDelta = vec2(newPos - mousePos);
+                mousePos = newPos;
+
             }
             if(e.type == Event::KeyReleased)
             {
@@ -121,8 +130,15 @@ int main()
                 {
 
                 }
-                if(e.key.code == Keyboard::Delete && selected>-1)
-                    gm.removeBall(selected);
+                if(e.key.code == Keyboard::Delete)
+                {
+                    if(selected>-1)
+                        gm.removeBall(selected);
+                    for(int s = 0; s < multSelection.size(); s++)
+                        gm.removeBall(multSelection[s]);
+                    multSelection.clear();
+                }
+
                 if(e.key.code == Keyboard::Up)
                 {
                     switch(mode)
@@ -227,7 +243,6 @@ int main()
 
             if(e.type == Event::MouseButtonPressed)
             {
-
                 if(e.mouseButton.button == Mouse::Left)
                 {
                     isHolding = true;
@@ -263,7 +278,6 @@ int main()
                         case(7):
                         {
                             double rad = 1/(180/3.14);
-
                             vec2 origin = vec2(mousePos.x, mousePos.y);
                             int index = gm.ballAmount;
                             gm.createBall(origin, false, true);
@@ -289,6 +303,11 @@ int main()
                         case(11):
                             gm.generateExplosion(mousePos,explosionRad,explosionPower*isExplosionReversed?-1:1);
                             break;
+                        }
+                        if(getSelectedBall() == -1)
+                        {
+                            selectionOriginDefined=false;
+                            multSelection.clear();
                         }
                     }
                 }
@@ -398,7 +417,6 @@ int main()
                 gm.balls[gm.ballAmount-1].sprite.setRadius(rad);
                 gm.balls[gm.ballAmount-1].sprite.setOrigin(vec2(rad,rad));
                 firstBall = gm.ballAmount-1;
-
             }
         }
         else if(mode == 9 && isHolding && !UIselection(ui[0]))
@@ -437,20 +455,18 @@ int main()
                 {
                     for(int j = 0; j<clothHeight; j++)
                     {
-                        cout << gm.ballAmount-(clothHeight-j)<<endl;
                         gm.addConstraint(gm.ballAmount-(clothHeight*2)+j-1,gm.ballAmount-clothHeight+j,constraintMode[currentConstraintMode]);
                     }
                 }
             }
         }
-
+        else if(mode == 10 && isHolding)
+            multSelect();
         if(!isPaused)
             gm.applyConstraints(maxThreads);
 
         window.clear(Color::White);
         window.setTitle("Physics Playground FPS:" + gm.toString(fps()));
-//DRAW HERE
-
         window.setView(camera);
         applyUIAnchors();
         window.draw(paramText);
@@ -468,15 +484,11 @@ int main()
             {
                 gm.balls[i].sprite.setPosition(gm.balls[i].sprite.getPosition().x,1080-gm.balls[i].sprite.getRadius());
                 gm.balls[i].updateFriction();
-
             }
             else
             {
                 gm.balls[i].acc.x = 0;
             }
-
-
-
             VertexArray line(LinesStrip, 2);
             for(int c =0; c<gm.balls[i].anchorCount; c++)
             {
@@ -491,22 +503,16 @@ int main()
             gm.balls[i].acc.y *=0.9;
         }
 
-
         if(mode==0 || mode==5 || mode==9 || mode==11)
             window.draw(preview);
+        else if(mode == 10 && isHolding)
+            window.draw(selectionRect);
         int selected =getSelectedBall();
+        for(auto& s : multSelection)
+            drawOutline(s);
         if(selected>-1)
         {
-            int selectedBallRadius =gm.balls[selected].sprite.getRadius();
-            CircleShape selectionCircle = CircleShape(selectedBallRadius);
-            selectionCircle.setFillColor(Color::Green);
-            selectionCircle.setOrigin(selectedBallRadius,selectedBallRadius);
-            selectionCircle.setPosition(gm.balls[selected].sprite.getPosition());
-            window.draw(selectionCircle);
-            selectionCircle.setRadius(selectedBallRadius-3);
-            selectionCircle.setFillColor(Color::Black);
-            selectionCircle.setOrigin(selectedBallRadius-3,selectedBallRadius-3);
-            window.draw(selectionCircle);
+            drawOutline(selected);
         }
         for(auto& r: gm.rects)
             window.draw(r);
@@ -616,8 +622,9 @@ void drag()
         }
     }
     else if(isHolding && targetIndex != -1)
-        //gm.balls[targetIndex].acc=vec2((mousePos.x-gm.balls[targetIndex].sprite.getPosition().x)/2, (mousePos.y-gm.balls[targetIndex].sprite.getPosition().y)/2);
-        gm.balls[targetIndex].sprite.move((mousePos.x-gm.balls[targetIndex].sprite.getPosition().x)/2, (mousePos.y-gm.balls[targetIndex].sprite.getPosition().y)/2);
+    {
+       gm.balls[targetIndex].sprite.move((mousePos.x-gm.balls[targetIndex].sprite.getPosition().x)/2, (mousePos.y-gm.balls[targetIndex].sprite.getPosition().y)/2);
+    }
     else if(!isHolding && targetIndex !=-1)
     {
         gm.balls[targetIndex].acc = Vector2f(0,0);
@@ -682,4 +689,39 @@ void applyUIAnchors()
         buttons[i].setPosition(Vector2f(origin.x+ui[0].getSize().x/2*(i%2),
                                         origin.y+ui[0].getSize().y/ceil((float)buttonCount/2)*floor(i/2)));
     }
+}
+void multSelect()
+{
+    if(!selectionOriginDefined)
+    {
+        selectionRect.setPosition(mousePos.x, mousePos.y);
+        selectionRect.setSize(Vector2f(0,0));
+        selectionOriginDefined = true;
+    }
+    else
+    {
+        Vector2f diff = Vector2f(mousePos.x - selectionRect.getPosition().x,
+                                 mousePos.y - selectionRect.getPosition().y);
+        selectionRect.setSize(Vector2f(diff.x,diff.y));
+        multSelection.clear();
+        for(int i = 0; i < gm.ballAmount; i++)
+        {
+            if(gm.ballRectCollision(gm.balls[i].sprite,selectionRect))
+                multSelection.push_back(i);
+        }
+    }
+    selectionRect.setFillColor(Color(0,0,0,50));
+}
+void drawOutline(int index)
+{
+    int ballRadius =gm.balls[index].sprite.getRadius();
+    CircleShape selectionCircle = CircleShape(ballRadius);
+    selectionCircle.setFillColor(Color::Green);
+    selectionCircle.setOrigin(ballRadius,ballRadius);
+    selectionCircle.setPosition(gm.balls[index].sprite.getPosition());
+    window.draw(selectionCircle);
+    selectionCircle.setRadius(ballRadius-3);
+    selectionCircle.setFillColor(Color::Black);
+    selectionCircle.setOrigin(ballRadius-3,ballRadius-3);
+    window.draw(selectionCircle);
 }
