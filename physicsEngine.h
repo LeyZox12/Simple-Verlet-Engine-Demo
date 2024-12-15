@@ -26,12 +26,11 @@ public:
     Vector2f normalize(Vector2f vec);
     bool ballRectCollision(CircleShape ball, RectangleShape rect);
     void generateExplosion(Vector2f position, float rad, float pow);
-    class ball
+    struct ball
     {
-    public:
         float radius;
         bool isStatic;
-        bool isEngine;
+        bool shouldShowStats;
         bool shouldCollide;
         CircleShape sprite;
         Vector2f position;
@@ -42,16 +41,13 @@ public:
         void collide();
         int anchorPointsIndex[1000];
         int anchorCount;
+        int index;
         std::string constraintMode[1000];
         int maxDist[1000];
-
         void applyConstraints(ball balls, int subSteps);
         float friction;
-
         ball(){
-
         }
-
         ball(Vector2f position, Vector2f anchorPoint)
         {
             this->sprite = CircleShape(radius);
@@ -62,7 +58,6 @@ public:
             this->anchorPoint = anchorPoint;
             this->sprite.setRadius(30);
             this-> acc = Vector2f(0,0);
-
         }
         void updateFriction(){
 
@@ -77,15 +72,42 @@ public:
                                   2*sprite.getPosition().x -position_old.x +  acc.x *( dt *dt),
                                   2*sprite.getPosition().y - position_old.y +acc.y * (dt *dt)
                               );
-            isEngine=false;
-
             position_old = sprite.getPosition();
             sprite.setPosition(newPos.x, newPos.y);
             }
 
         }
+        float roundClose(float v)
+        {
+            return std::round(v*10)/10;
+        }
+        std::string tostr(float v)
+        {
+            std::string str;
+            std::stringstream ss;
+            ss<<roundClose(v);
+            ss>>str;
+            return str;
+        }
 
+        void showStats(RenderWindow& window,Font font)
+        {
+            RectangleShape rect(Vector2f(300,200));
+            rect.setFillColor(Color(0,0,0,100));
+            Text stat;
+            std::string staticStr = isStatic ? "True" : "False";
+            Vector2f vel = sprite.getPosition() - position_old;
+            stat.setFont(font);
+            stat.setFillColor(Color::White);
+            stat.setCharacterSize(16);
+            rect.setPosition(Vector2f(sprite.getPosition() + Vector2f(20+sprite.getRadius(),-rect.getSize().y)));
+            window.draw(rect);
+            stat.setPosition(rect.getPosition() + Vector2f(10,10));
+            stat.setString("index:"+ tostr(index) + "\nposX:" + tostr(sprite.getPosition().x) + "  posY:" + tostr(sprite.getPosition().y) +
+                           "\nConstraint count:" + tostr(anchorCount) + "\nStatic:" + staticStr + "\nvelX:" + tostr(vel.x) + "  velY:" + tostr(vel.y));
+            window.draw(stat);
 
+        }
     };
 int subSteps=2;
 int ballAmount;

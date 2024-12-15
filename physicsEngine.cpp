@@ -16,7 +16,7 @@ void physicsEngine::createBall(Vector2f position,bool shouldBeStatic, bool shoul
     balls[ballAmount].sprite.setOrigin(15,15);
     balls[ballAmount].isStatic = shouldBeStatic;
     balls[ballAmount].shouldCollide = shouldCollide;
-
+    balls[ballAmount].index = ballAmount;
 
     ballAmount++;
 
@@ -93,14 +93,32 @@ void physicsEngine::applyConstraints(int maxThreads)
 }
 void physicsEngine::removeBall(int ballIndex)
 {
-        for(int i :balls[ballIndex].anchorPointsIndex)
-            removeConstraint(i,ballIndex);
-        /*for(int i : balls[ballAmount-1].anchorPointsIndex)
-            for(int j = 0; j < balls[i].anchorCount; j++)
-                if(j==ballAmount-1)
-                    balls[i].anchorPointsIndex[j] = ballIndex;
+
+        int aCount = balls[ballIndex].anchorCount;
+        for(int i = 0; i < aCount; i++)
+        {
+            int index = balls[ballIndex].anchorPointsIndex[i];
+            removeConstraint(index,ballIndex);
+        }
+    if(ballIndex < ballAmount - 1)
+    {
+        aCount = balls[ballAmount-1].anchorCount;
         balls[ballIndex] = balls[ballAmount-1];
-        ballAmount--;*/
+        for(int i = 0; i < aCount; i++)
+        {
+            removeConstraint(ballAmount - 1,balls[ballAmount - 1].anchorPointsIndex[i]);
+        }
+        for(int i = 0; i < aCount; i++)
+        {
+
+
+            int otherIndex = balls[ballAmount-1].anchorPointsIndex[i];
+            for(int j = 0; j < balls[otherIndex].anchorCount; j++)
+                if(balls[otherIndex].anchorPointsIndex[j] == ballAmount - 1)
+                    balls[otherIndex].anchorPointsIndex[j] = ballIndex;
+        }
+    }
+    ballAmount--;
 }
 void physicsEngine::applyConstraintsThread(int startingPoint,int endPoint)
 {
@@ -109,24 +127,6 @@ void physicsEngine::applyConstraintsThread(int startingPoint,int endPoint)
         {
             if(!balls[i].isStatic)
             {
-                /*for(auto& r : rects){
-                    if(ballRectCollision(balls[i].sprite,r)){
-                        Vector2f ballPos = balls[i].sprite.getPosition();
-                        Vector2f rectPos = r.getPosition();
-                        vector<float> dists = {ballPos.x - rectPos.x,
-                                               rectPos.x+r.getSize().x - ballPos.x,
-                                               ballPos.y - rectPos.y,
-                                               rectPos.y+r.getSize().y - ballPos.y};
-
-                        auto mindist = distance(dists, min_element(dists.begin(), dists.end()));
-                        if(dists)
-                        {
-                            balls[i].sprite.setPosition(rectPos.x - balls[i].sprite.getRadius(), ballPos.y);
-                            balls[i].position_old = balls[i].sprite.getPosition();
-                        }else if
-
-                    }
-                }*/
                 for(int c = 0; c<balls[i].anchorCount; c++)
                 {
                     float dist = getDist(balls[i].sprite.getPosition(), balls[balls[i].anchorPointsIndex[c]].sprite.getPosition());

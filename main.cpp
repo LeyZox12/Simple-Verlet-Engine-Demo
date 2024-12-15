@@ -294,6 +294,12 @@ int main()
                 }
                 else if(e.mouseButton.button == Mouse::Middle)
                     isMovingCamera = true;
+                else if(e.mouseButton.button == Mouse::Right)
+                {
+                    int selected = getSelectedBall();
+                    if(selected>-1)
+                        gm.balls[selected].shouldShowStats = !gm.balls[selected].shouldShowStats;
+                }
                 int i =0;
 
                 for(auto& b: buttons)
@@ -450,7 +456,8 @@ int main()
         window.draw(paramText);
         for(int i =0; i<gm.ballAmount; i++)
         {
-
+            if(gm.balls[i].shouldShowStats)
+                gm.balls[i].showStats(window,font);
             if(!isPaused)
             {
                 gm.balls[i].acc.y +=98.8;
