@@ -72,7 +72,7 @@ void start()
     paramText.setColor(Color::Black);
     gm.subSteps = 4;
     gm.constraintStrength = 0.2;
-    gm.rotationSpeed = 1;
+    gm.rotationSpeed = 10;
     cur.setFillColor(Color::Green);
     window.setVerticalSyncEnabled(true);
     window.setKeyRepeatEnabled(true);
