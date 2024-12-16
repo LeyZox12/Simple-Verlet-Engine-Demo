@@ -111,6 +111,7 @@ public:
     };
 int subSteps=2;
 int ballAmount;
+int rotationSpeed;
 float constraintStrength = 0.1;
 float springStrength = 0.01;
 ball balls[20000];
