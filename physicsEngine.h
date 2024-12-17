@@ -42,6 +42,7 @@ public:
         int anchorPointsIndex[1000];
         int anchorCount;
         int index;
+        float rotationSpeed;
         std::string constraintMode[1000];
         int maxDist[1000];
         void applyConstraints(ball balls, int subSteps);
@@ -90,7 +91,7 @@ public:
             return str;
         }
 
-        void showStats(RenderWindow& window,Font font)
+        void showStats(RenderWindow& window, Vector2f mousePos,Font font)
         {
             RectangleShape rect(Vector2f(300,200));
             rect.setFillColor(Color(0,0,0,100));
@@ -104,18 +105,23 @@ public:
             window.draw(rect);
             stat.setPosition(rect.getPosition() + Vector2f(10,10));
             stat.setString("index:"+ tostr(index) + "\nposX:" + tostr(sprite.getPosition().x) + "  posY:" + tostr(sprite.getPosition().y) +
-                           "\nConstraint count:" + tostr(anchorCount) + "\nStatic:" + staticStr + "\nvelX:" + tostr(vel.x) + "  velY:" + tostr(vel.y));
+                           "\nConstraint count:" + tostr(anchorCount) + "\nStatic:" + staticStr + "\nvelX:" + tostr(vel.x) + "  velY:" + tostr(vel.y) + "\nRotation Speed(constraint):" + tostr(rotationSpeed));
+            static RectangleShape sliderbg;
+            sliderbg.setFillColor(Color::Black);
             window.draw(stat);
 
         }
+
     };
 int subSteps=2;
 int ballAmount;
-int rotationSpeed;
 float constraintStrength = 0.1;
 float springStrength = 0.01;
 ball balls[20000];
 std::vector<RectangleShape> rects;
+double pi = 3.14159;
+double r = (double)pi/180;
+double d = 180/pi;
 protected:
 
 private:

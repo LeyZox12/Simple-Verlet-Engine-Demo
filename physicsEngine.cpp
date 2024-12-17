@@ -31,6 +31,7 @@ void physicsEngine::addConstraint(int firstElement, int secondElement, std::stri
     balls[secondElement].constraintMode[balls[secondElement].anchorCount] =constraintType;
     balls[secondElement].anchorCount++;
     balls[firstElement].anchorCount++;
+
 }
 void physicsEngine::addConstraint(int firstElement, int secondElement, std::string constraintType, float maxDist)
 {
@@ -130,7 +131,8 @@ void physicsEngine::applyConstraintsThread(int startingPoint,int endPoint)
                     float dist = getDist(balls[i].sprite.getPosition(), balls[balls[i].anchorPointsIndex[c]].sprite.getPosition());
                     float difference = dist - balls[i].maxDist[c];
 
-                    if(balls[i].constraintMode[c] == "Rigid" || balls[i].constraintMode[c] == "Rigid(spin)")
+                    if(balls[i].constraintMode[c] == "Rigid" ||
+                       balls[i].constraintMode[c] == "Rigid(spin)")
                     {
                         Vector2f dir;
                         Vector2f fixed;
@@ -138,19 +140,11 @@ void physicsEngine::applyConstraintsThread(int startingPoint,int endPoint)
                         Vector2f ball2 = balls[balls[i].anchorPointsIndex[c]].sprite.getPosition();
                         float angle = atan2(ball2.y - ball1.y,
                                             ball2.x - ball1.x);
-                        double pi = 3.14159;
-                        double r = (double)pi/180;
-                        double d = 180/pi;
-                        std::cout << d*angle<< std::endl;
                         if(!balls[i].isStatic && !balls[balls[i].anchorPointsIndex[c]].isStatic)
                         {
                             if(balls[i].constraintMode[c] == "Rigid(spin)")
-                            {
-                                    balls[balls[i].anchorPointsIndex[c]].sprite.move(cos((angle*d-rotationSpeed)*r),
-                                                                                          sin((angle*d-rotationSpeed)*r));
-                                    balls[i].sprite.move(sin((angle*d-rotationSpeed)*r),
-                                                               cos((angle*d-rotationSpeed)*r));
-                            }
+                                    balls[balls[i].anchorPointsIndex[c]].sprite.move(cos((angle*d-balls[i].rotationSpeed)*r),
+                                                                                          sin((angle*d-balls[i].rotationSpeed)*r));
                             Vector2f dir = normalize(Vector2f(balls[i].sprite.getPosition()-balls[balls[i].anchorPointsIndex[c]].sprite.getPosition()));
                             Vector2f fixed = Vector2f(balls[i].sprite.getPosition().x - dir.x *(difference*constraintStrength),
                                                       balls[i].sprite.getPosition().y - dir.y *(difference*constraintStrength));
@@ -163,8 +157,8 @@ void physicsEngine::applyConstraintsThread(int startingPoint,int endPoint)
                             else if(balls[i].isStatic)
                             {
                                 if(balls[i].constraintMode[c] == "Rigid(spin)")
-                                    balls[balls[i].anchorPointsIndex[c]].sprite.move(cos((angle*d-rotationSpeed)*r),
-                                                                                          sin((angle*d-rotationSpeed)*r));
+                                    balls[balls[i].anchorPointsIndex[c]].sprite.move(cos((angle*d-balls[balls[i].anchorPointsIndex[c]].rotationSpeed)*r),
+                                                                                     sin((angle*d-balls[balls[i].anchorPointsIndex[c]].rotationSpeed)*r));
                                 dir = normalize(Vector2f(balls[balls[i].anchorPointsIndex[c]].sprite.getPosition()-balls[i].sprite.getPosition()));
                                 fixed = Vector2f(balls[balls[i].anchorPointsIndex[c]].sprite.getPosition().x - dir.x *difference*constraintStrength*2,
                                                           balls[balls[i].anchorPointsIndex[c]].sprite.getPosition().y - dir.y *difference*constraintStrength*2 );
@@ -173,8 +167,8 @@ void physicsEngine::applyConstraintsThread(int startingPoint,int endPoint)
                             else if(balls[balls[i].anchorPointsIndex[c]].isStatic)
                             {
                                 if(balls[i].constraintMode[c] == "Rigid(spin)")
-                                    balls[i].sprite.move(cos((angle*d-rotationSpeed)*r),
-                                                         sin((angle*d-rotationSpeed)*r));
+                                    balls[i].sprite.move(cos((angle*d-balls[i].rotationSpeed)*r),
+                                                         sin((angle*d-balls[i].rotationSpeed)*r));
                                 Vector2f dir = normalize(Vector2f(balls[i].sprite.getPosition()-balls[balls[i].anchorPointsIndex[c]].sprite.getPosition()));
                                 Vector2f fixed = Vector2f(balls[i].sprite.getPosition().x - dir.x *(difference*constraintStrength*2),
                                                           balls[i].sprite.getPosition().y - dir.y *(difference*constraintStrength*2) );
