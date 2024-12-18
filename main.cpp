@@ -26,6 +26,7 @@ int firstElement = -1;
 int secondElement= -1;
 int targetIndex = -1;
 int buttonCount = 16;
+int contraptionIndex = 0;
 int currentConstraintMode = 0;
 float cameraSpeed=0.5;
 float explosionRad = 50.0;
@@ -42,6 +43,7 @@ bool isMovingCamera = false;
 bool isExplosionReversed = false;
 bool selectionOriginDefined = false;
 void addConstraint();
+bool isContraptionValid();
 void removeConstraint();
 void drag();
 void start();
@@ -50,7 +52,7 @@ void multSelect();
 void initialize();
 void drawOutline(int index);
 void saveContraption();
-void loadContraption();
+void loadContraption(vec2 offset);
 vec2 grid(int x,int y, int w);
 vec2 mousePos;
 vec2 getTextureRect(int x, int y);
@@ -188,6 +190,11 @@ int main()
                     case(12):
                         motorSpeed-=1;
                         break;
+                    case(14):
+                    case(15):
+                        if(contraptionIndex>0)
+                            contraptionIndex--;
+                        break;
                     }
                 if(e.key.code == Keyboard::Right)
                     switch(mode)
@@ -213,7 +220,11 @@ int main()
                         explosionPower+=10;
                         break;
                     case(12):
-                        motorSpeed+=1;
+                        motorSpeed++;
+                        break;
+                    case(14):
+                    case(15):
+                        contraptionIndex++;
                         break;
                     }
             }
@@ -308,7 +319,11 @@ int main()
                         case(11):
                             gm.generateExplosion(mousePos,explosionRad,explosionPower*isExplosionReversed?-1:1);
                             break;
+                        case(14):
+                            loadContraption(mousePos);
+                            break;
                         }
+
                         if(getSelectedBall() == -1)
                         {
                             selectionOriginDefined=false;
@@ -325,7 +340,6 @@ int main()
                         gm.balls[selected].shouldShowStats = !gm.balls[selected].shouldShowStats;
                 }
                 int i =0;
-
                 for(auto& b: buttons)
                 {
                     if(UIselection(b))
@@ -354,11 +368,9 @@ int main()
                         gm.removeBall(i);
                         gm.ballAmount--;
                     }
-
+                    multSelection.clear();
                 }
-                else if(UIselection(buttons[14]))
-                    loadContraption();
-                else if(UIselection(buttons[15]))
+                else if(UIselection(buttons[15]) && multSelection.size() > 0)
                     saveContraption();
             }
 
@@ -402,6 +414,10 @@ int main()
             break;
         case(12):
             paramText.setString("Rotation Speed:"+gm.toString(motorSpeed));
+            break;
+        case(14):
+        case(15):
+            paramText.setString("Selected Contraption:" + gm.toString(contraptionIndex) + (isContraptionValid() ?"" : "(empty)"));
             break;
         default:
             paramText.setString("");
@@ -615,7 +631,6 @@ int getSelectedBall()  // if ball is found return i else return 0, true index = 
     {
         if(gm.getDist(vec2(mousePos.x,mousePos.y), gm.balls[i].sprite.getPosition()) < gm.balls[i].sprite.getRadius())
         {
-
             return i;
         }
     }
@@ -704,7 +719,7 @@ void applyUIAnchors()
     ui[1].setPosition(window.mapPixelToCoords(Vector2i(0,1080)).x,1080);
     ui[0].setSize(Vector2f(camera.getSize().x/(940/200),camera.getSize().y));
     ui[1].setSize(Vector2f(camera.getSize().x, camera.getSize().y));
-    paramText.setPosition(window.mapPixelToCoords(Vector2i((940/2),paramText.getCharacterSize())));
+    paramText.setPosition(window.mapPixelToCoords(Vector2i((940),paramText.getCharacterSize())));
     paramText.setScale(Vector2f(camera.getSize().x / 940, camera.getSize().y/540));
     Vector2f ratioSize = Vector2f(940/60,540/60);
 
@@ -752,29 +767,41 @@ void drawOutline(int index)
 }
 void saveContraption()
 {
-    ofstream file("contraption1.contr");
+    vec2 origin = vec2(gm.balls[multSelection[0]].sprite.getPosition());
+    map<int, int> ballsTransformed;
+    for(int i = 0; i < multSelection.size(); i++)
+    {
+        ballsTransformed.insert(make_pair(multSelection[i],i));
+    }
+    ofstream file("contraption" + gm.toString(contraptionIndex) + ".contr");
     file << multSelection.size() << endl;
     for(int i = 0; i < multSelection.size(); i++)
     {
         physicsEngine::ball b = gm.balls[multSelection[i]];
-        file << b.sprite.getPosition().x << endl
-             << b.sprite.getPosition().y << endl
+        file << b.sprite.getPosition().x - origin.x << endl
+             << b.sprite.getPosition().y - origin.y << endl
              << b.sprite.getRadius() << endl
              << b.isStatic << endl
+             << b.friction << endl
              << b.rotationSpeed << endl
              << gm.balls[multSelection[i]].anchorCount << endl;
         for(int j = 0; j < gm.balls[multSelection[i]].anchorCount; j++)
         {
-            file << b.anchorPointsIndex[j] << endl
+            file << ballsTransformed[b.anchorPointsIndex[j]] << endl
                  << b.maxDist[j] << endl
                  << b.constraintMode[j] << endl;
         }
     }
     file.close();
 }
-void loadContraption()
+bool isContraptionValid()
 {
-    ifstream file("contraption1.contr");
+    ifstream file("contraption" + gm.toString(contraptionIndex) + ".contr");
+    return file.good();
+}
+void loadContraption(vec2 offset)
+{
+    ifstream file("contraption" + gm.toString(contraptionIndex) + ".contr");
     int ballCount = 0;
     file >> ballCount;
     vec2 pos;
@@ -782,20 +809,32 @@ void loadContraption()
     int isStatic;
     int anchorCount;
     float rotationSpeed;
+    float friction;
+    int ballAmount = gm.ballAmount;
+    vector<pair<int,int>> constraintUsed;
     for(int i = 0; i < ballCount; i++)
     {
-        file >> pos.x >> pos.y >> radius >> isStatic >> rotationSpeed >> anchorCount;
-        gm.createBall(vec2(pos),isStatic == 1 ? true : false, true);
+        file >> pos.x >> pos.y >> radius >> isStatic >> friction >> rotationSpeed >> anchorCount;
+        gm.createBall(vec2(pos+offset),isStatic == 1 ? true : false, true);
         gm.balls[gm.ballAmount-1].sprite.setRadius(radius);
         gm.balls[gm.ballAmount-1].sprite.setOrigin(radius,radius);
         gm.balls[gm.ballAmount-1].sprite.setFillColor(Color::Black);
+        gm.balls[gm.ballAmount-1].friction = friction;
+        gm.balls[gm.ballAmount-1].rotationSpeed = rotationSpeed;
         for(int j = 0; j < anchorCount; j++)
         {
+            bool shouldAddConstraint = true;
             int anchorIndex;
             float maxDist;
             string cMode;
             file >> anchorIndex >> maxDist >> cMode;
-            gm.addConstraint(gm.ballAmount-1, anchorIndex, cMode, maxDist);
+            for(int c = 0; c < gm.balls[gm.ballAmount-1].anchorCount; c++)
+                if(gm.balls[gm.ballAmount-1].anchorPointsIndex[c] == anchorIndex+ballAmount)
+                    shouldAddConstraint = false;
+            if(shouldAddConstraint)
+            {
+                gm.addConstraint(gm.ballAmount-1, anchorIndex+ballAmount, cMode, maxDist);
+            }
         }
     }
 }

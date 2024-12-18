@@ -23,6 +23,7 @@ void physicsEngine::createBall(Vector2f position,bool shouldBeStatic, bool shoul
 }
 void physicsEngine::addConstraint(int firstElement, int secondElement, std::string constraintType)
 {
+
     balls[secondElement].anchorPointsIndex[balls[secondElement].anchorCount] = firstElement;
     balls[firstElement].anchorPointsIndex[balls[firstElement].anchorCount] = secondElement;
     balls[secondElement].maxDist[balls[secondElement].anchorCount] = getDist(balls[firstElement].sprite.getPosition(),balls[secondElement].sprite.getPosition() );
