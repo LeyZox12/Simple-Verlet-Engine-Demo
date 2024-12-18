@@ -14,7 +14,7 @@ Font font;
 Texture texture;
 int mode=0;
 int rad = 15;
-int maxThreads = 8;
+int maxThreads = 10;
 int fps();
 int currentChain=0;
 int spacing = 2;
@@ -75,7 +75,7 @@ void start()
     paramText.setPosition(0,0);
     paramText.setFont(font);
     paramText.setColor(Color::Black);
-    gm.subSteps = 4;
+    gm.subSteps = 2;
     gm.constraintStrength = 0.2;
     cur.setFillColor(Color::Green);
     window.setVerticalSyncEnabled(true);
@@ -504,7 +504,7 @@ int main()
         else if(mode == 10 && isHolding)
             multSelect();
         if(!isPaused)
-            gm.applyConstraints(maxThreads);
+            gm.applyConstraints(gm.ballAmount > maxThreads ? maxThreads : 1);
 
         window.clear(Color::White);
         window.setTitle("Physics Playground FPS:" + gm.toString(fps()));

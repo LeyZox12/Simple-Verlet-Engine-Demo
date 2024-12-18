@@ -45,7 +45,6 @@ public:
         float rotationSpeed;
         std::string constraintMode[1000];
         int maxDist[1000];
-        void applyConstraints(ball balls, int subSteps);
         float friction;
         ball(){
         }

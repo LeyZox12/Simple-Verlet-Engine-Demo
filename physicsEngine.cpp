@@ -88,10 +88,11 @@ void physicsEngine::applyConstraints(int maxThreads)
                 applyConstraintsThread(t * part, (t + 1) * part);
             });
         }
-        for(auto& t:threads)
-            t.join();
-        threads.clear();
+
     }
+    for(auto& t:threads)
+        t.join();
+    threads.clear();
 }
 void physicsEngine::removeBall(int ballIndex)
 {
