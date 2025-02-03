@@ -84,15 +84,14 @@ void physicsEngine::deleteRect(int i)
 }
 void physicsEngine::applyConstraints(int maxThreads)
 {
+    static int oldBallAmount = ballAmount;
     std::vector<std::thread> threads;
-    for(int s = 0; s<subSteps; s++)
-    {
-        int part = ceil((float)ballAmount/maxThreads);
-        for(int t=0; t<maxThreads; t++){
-            threads.emplace_back([this, t, part]() {
-                applyConstraintsThread(t * part, (t + 1) * part);
-            });
-        }
+    int part = ceil((float)ballAmount/maxThreads);
+
+    for(int t=0; t<maxThreads; t++){
+        threads.emplace_back([this, t, part]() {
+            applyConstraintsThread(t * part, (t + 1) * part);
+        });
     }
     for(auto& t:threads)
         t.join();
@@ -126,6 +125,9 @@ void physicsEngine::removeBall(int ballIndex)
 }
 void physicsEngine::applyConstraintsThread(int startingPoint,int endPoint)
 {
+
+    for(int _ = 0; _ < subSteps; _++)
+    {
         for(int i = startingPoint; i<endPoint; i++)
         {
             if(!balls[i].isStatic)
@@ -134,7 +136,15 @@ void physicsEngine::applyConstraintsThread(int startingPoint,int endPoint)
                 {
                     float dist = getDist(balls[i].sprite.getPosition(), balls[balls[i].anchorPointsIndex[c]].sprite.getPosition());
                     float difference = dist - balls[i].maxDist[c];
+                    if(balls[i].constraintMode[c] == "Custom")
+                    {
+                        Vector2f ball1Pos = balls[i].sprite.getPosition();
+                        Vector2f ball2Pos = balls[balls[i].anchorPointsIndex[c]].sprite.getPosition();
+                        Vector2f newPos1 = customConstraint.nodes[0].getOutput(customConstraint.nodes, ball1Pos, ball2Pos);
 
+                        balls[i].sprite.setPosition(newPos1);
+
+                    }
                     if(balls[i].constraintMode[c] == "Rigid" ||
                        balls[i].constraintMode[c] == "Rigid(spin)")
                     {
@@ -296,6 +306,8 @@ void physicsEngine::applyConstraintsThread(int startingPoint,int endPoint)
                         Vector2f fixed;
                         float dist = (float)getDist(balls[i].sprite.getPosition(), balls[n].sprite.getPosition());
                         float difference = dist - (balls[i].sprite.getRadius()+balls[n].sprite.getRadius());
+                        float radiusCoefi = balls[n].sprite.getRadius() / balls[i].sprite.getRadius();
+                        float radiusCoefn = balls[i].sprite.getRadius() / balls[n].sprite.getRadius();
 
                         if(dist <=balls[i].sprite.getRadius()+balls[n].sprite.getRadius())
                         {
@@ -303,12 +315,12 @@ void physicsEngine::applyConstraintsThread(int startingPoint,int endPoint)
                             if(!balls[n].isStatic && !balls[i].isStatic)
                             {
                                 Vector2f dir = normalize(Vector2f(balls[i].sprite.getPosition()-balls[n].sprite.getPosition()));
-                                Vector2f fixed = Vector2f(balls[i].sprite.getPosition().x - dir.x *(difference*constraintStrength),
-                                                          balls[i].sprite.getPosition().y - dir.y *(difference*constraintStrength) );
+                                Vector2f fixed = Vector2f(balls[i].sprite.getPosition().x - dir.x *(difference*constraintStrength * radiusCoefi),
+                                                          balls[i].sprite.getPosition().y - dir.y *(difference*constraintStrength * radiusCoefi) );
                                 balls[i].sprite.setPosition(fixed);
                                 dir = Vector2f(dir.x*-1,dir.y*-1);
-                                fixed = Vector2f(balls[n].sprite.getPosition().x - dir.x *difference*constraintStrength,
-                                                          balls[n].sprite.getPosition().y - dir.y *difference*constraintStrength );
+                                fixed = Vector2f(balls[n].sprite.getPosition().x - dir.x *difference*constraintStrength * radiusCoefn,
+                                                          balls[n].sprite.getPosition().y - dir.y *difference*constraintStrength * radiusCoefn);
                                 balls[n].sprite.setPosition(fixed);
 
                             }
@@ -331,6 +343,7 @@ void physicsEngine::applyConstraintsThread(int startingPoint,int endPoint)
                 }
             }
         }
+    }
 }
 void physicsEngine::generateExplosion(Vector2f position,float rad, float pow)
 {

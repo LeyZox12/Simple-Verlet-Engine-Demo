@@ -67,30 +67,30 @@ Vector2f mouseDelta;
 Color defaultColor = Color::Black;
 vector<int> multSelection;
 vector<RectangleShape> buttons;
-vector<string> constraintMode = {"Rigid","Rope", "Spring", "Rigid(spin)"};
+vector<string> constraintMode = {"Rigid","Rope", "Spring", "Custom"};
 string buffer;
 Text paramText;
 RectangleShape cur(Vector2f(5,5));
 RectangleShape ui[2] = {RectangleShape(Vector2f(300,540)), RectangleShape(Vector2f(960,100))};
 RectangleShape selectionRect;
 View camera(FloatRect(0,0,960,540));
-physicsEngine::customConstraintScript testScript;
 
 void start()
 {
-    testScript.addNode("add");
-    testScript.nodes[0].inputIndexes.push_back(2);
     ifstream config("res/config.ini");
+    int r;
+    int g;
+    int b;
     if(config.good())
     {
         config >> buffer >> maxThreads >>
                   buffer >> gm.subSteps >>
                   buffer >> gm.constraintStrength >>
                   buffer >> gm.springStrength >> buffer>>
-                  buffer >> defaultColor.r >>
-                  buffer >> defaultColor.g >>
-                  buffer >> defaultColor.b;
-    cout << defaultColor.r << endl << defaultColor.g << defaultColor.b<< endl;
+                  buffer >> r >>
+                  buffer >> g >>
+                  buffer >> b;
+        defaultColor = Color(r, g, b);
     }
     else
     {
@@ -110,6 +110,7 @@ void start()
         cout <<"Error, could not load font.ttf\n";
     if(!texture.loadFromFile("res/spriteSheet.png"))
         cout<<"Error, could not load spriteSheet.png\n";
+    gm.customConstraint.init(font);
     paramText.setPosition(0,0);
     paramText.setFont(font);
     paramText.setColor(defaultColor);
@@ -151,7 +152,7 @@ int main()
     {
         while(window.pollEvent(e))
         {
-            testScript.updateUI(e, window);
+            gm.customConstraint.updateUI(e, window);
             if(e.type == Event::Closed)
                 window.close();
             if(e.type == Event::MouseMoved)
@@ -161,7 +162,7 @@ int main()
                     Vector2f delta = window.mapPixelToCoords(Vector2i(Mouse::getPosition(window).x,Mouse::getPosition(window).y)) - mousePos;
                     camera.move(delta*-cameraSpeed);
                 }
-                Vector2f newPos = window.mapPixelToCoords(Vector2i(Mouse::getPosition(window).x,Mouse::getPosition(window).y));
+                Vector2f newPos = window.mapPixelToCoords(Mouse::getPosition(window));
                 mouseDelta = Vector2f(newPos - mousePos);
                 mousePos = newPos;
 
@@ -185,6 +186,7 @@ int main()
                     for(int s = 0; s < multSelection.size(); s++)
                         gm.removeBall(multSelection[s]);
                     multSelection.clear();
+                    gm.customConstraint.unLink();
                 }
                 if(e.key.code == Keyboard::R && mode == 10)
                     gm.createRect(selectionRect.getPosition(), selectionRect.getSize());
@@ -402,7 +404,7 @@ int main()
         }
         onHold();
         if(!isPaused)
-            gm.applyConstraints(gm.ballAmount > maxThreads ? maxThreads : 1);
+            gm.applyConstraints(maxThreads);
         window.clear(Color::White);
         window.setTitle("Physics Playground FPS:" + gm.toString(fps()));
         window.setView(camera);
@@ -464,7 +466,6 @@ int main()
                 loadContraption(mousePos, true);
                 break;
         }
-
         if(mode == 10 && isHolding)
             window.draw(selectionRect);
         int selected =getSelectedBall();
@@ -479,7 +480,7 @@ int main()
         for(RectangleShape b:buttons)
             window.draw(b);
         if(showScript)
-            testScript.showScriptVisual(window, font, ui[0].getPosition() + Vector2f(400, 0), Vector2f(400, 400));
+            gm.customConstraint.showScriptVisual(window, font, ui[0].getPosition() + Vector2f(400, 0), Vector2f(400, 400));
         window.display();
 
     }
@@ -770,7 +771,7 @@ void loadContraption(Vector2f offset, bool isPreview)
     }
 
 }
-void onClick()
+void onRightClick()
 {
 
 }
@@ -844,8 +845,7 @@ void onHold()
     }
     else if(mode == 16 && isHolding)
     {
-        cout << "holding 16" << endl;
-        testScript.grab(mousePos);
+        gm.customConstraint.grab(mousePos);
     }
 }
 void onLeftClick()
@@ -911,6 +911,9 @@ void onLeftClick()
             break;
         case(14):
             loadContraption(mousePos, false);
+            break;
+        case(16):
+            gm.customConstraint.link();
             break;
         }
         if(getSelectedBall() == -1)
