@@ -11,7 +11,8 @@ using namespace std;
 
 UIutils uiUtil;
 physicsEngine gm;
-RenderWindow window(VideoMode::getDesktopMode(), "PlayGround");
+RenderWindow window(VideoMode::getDesktopMode(), "PlayGround", Style::Fullscreen);
+
 Event e;
 Font font;
 Texture texture;
@@ -19,16 +20,16 @@ int mode=0;
 int rad = 15;
 int maxThreads = 10;
 int fps();
-int currentChain=0;
+unsigned int currentChain=0;
 int spacing = 2;
-int points = 20;
-int clothHeight = 5;
+unsigned int points = 20;
+unsigned int clothHeight = 5;
 int getSelectedBall();
 int firstBall = -1;
 int firstElement = -1;
 int secondElement= -1;
 int targetIndex = -1;
-int buttonCount = 17;
+unsigned int buttonCount = 17;
 int contraptionIndex = 0;
 int currentConstraintMode = 0;
 float cameraSpeed=0.5;
@@ -67,31 +68,30 @@ Vector2f mouseDelta;
 Color defaultColor = Color::Black;
 vector<int> multSelection;
 vector<RectangleShape> buttons;
-vector<string> constraintMode = {"Rigid","Rope", "Spring", "Rigid(spin)"};
+vector<string> constraintMode = {"Rigid","Rope", "Spring", "Custom"};
 string buffer;
 Text paramText;
 RectangleShape cur(Vector2f(5,5));
 RectangleShape ui[2] = {RectangleShape(Vector2f(300,540)), RectangleShape(Vector2f(960,100))};
 RectangleShape selectionRect;
 View camera(FloatRect(0,0,960,540));
-physicsEngine::customConstraintScript testScript;
 
 void start()
 {
-    testScript.addNode(0);
-    testScript.addNode(1);
-    testScript.nodes[0].inputIndexes.push_back(2);
     ifstream config("res/config.ini");
+    int r;
+    int g;
+    int b;
     if(config.good())
     {
         config >> buffer >> maxThreads >>
                   buffer >> gm.subSteps >>
                   buffer >> gm.constraintStrength >>
                   buffer >> gm.springStrength >> buffer>>
-                  buffer >> defaultColor.r >>
-                  buffer >> defaultColor.g >>
-                  buffer >> defaultColor.b;
-    cout << defaultColor.r << endl << defaultColor.g << defaultColor.b<< endl;
+                  buffer >> r >>
+                  buffer >> g >>
+                  buffer >> b;
+        defaultColor = Color(r, g, b);
     }
     else
     {
@@ -111,7 +111,7 @@ void start()
         cout <<"Error, could not load font.ttf\n";
     if(!texture.loadFromFile("res/spriteSheet.png"))
         cout<<"Error, could not load spriteSheet.png\n";
-    testScript.init(font);
+    gm.customConstraint.init(font);
     paramText.setPosition(0,0);
     paramText.setFont(font);
     paramText.setColor(defaultColor);
@@ -119,7 +119,7 @@ void start()
     window.setVerticalSyncEnabled(true);
     window.setKeyRepeatEnabled(true);
 
-    for(int i = 0; i<buttonCount; i++)
+    for(unsigned int i = 0; i<buttonCount; i++)
         buttons.emplace_back(RectangleShape(Vector2f(60,60)));
 
     for(auto& u: ui)
@@ -128,7 +128,7 @@ void start()
         b.setFillColor(Color::White);
 
 
-    for(int i =0; i<buttonCount; i++)
+    for(unsigned int i =0; i<buttonCount; i++)
     {
         buttons[i].setTextureRect({(i%3)*16,round((i/3))*16,16,16});
         buttons[i].setPosition(grid(i,1,2));
@@ -143,10 +143,8 @@ void start()
     {
         b.setSize(Vector2f(b.getSize().x-15, b.getSize().y-15));
     }
-
     ui[1].setPosition(0,1080);
     ui[2].setPosition(0,0);
-
 }
 int main()
 {
@@ -155,7 +153,7 @@ int main()
     {
         while(window.pollEvent(e))
         {
-            testScript.updateUI(e, window);
+            gm.customConstraint.updateUI(e, window);
             if(e.type == Event::Closed)
                 window.close();
             if(e.type == Event::MouseMoved)
@@ -179,16 +177,17 @@ int main()
                 }
                 if(e.key.code == Keyboard::Delete)
                 {
-                    for(int i = 0; i < gm.rectAmount; i++)
+                    for(unsigned int i = 0; i < gm.rectAmount; i++)
                         if(UIselection(gm.rects[i]))
                         {
                             gm.deleteRect(i);
                         }
                     if(selected>-1)
                         gm.removeBall(selected);
-                    for(int s = 0; s < multSelection.size(); s++)
+                    for(unsigned int s = 0; s < multSelection.size(); s++)
                         gm.removeBall(multSelection[s]);
                     multSelection.clear();
+                    gm.customConstraint.unLink();
                 }
                 if(e.key.code == Keyboard::R && mode == 10)
                     gm.createRect(selectionRect.getPosition(), selectionRect.getSize());
@@ -340,12 +339,12 @@ int main()
                 else if(UIselection(buttons[13]))
                 {
                     int bAmount = gm.ballAmount;
-                    for(int i = 0; i < bAmount; i++)
+                    for(unsigned int i = 0; i < bAmount; i++)
                     {
                         gm.removeBall(i);
                         gm.ballAmount--;
                     }
-                    for(int i = 0; i < gm.rectAmount; i++)
+                    for(unsigned int i = 0; i < gm.rectAmount; i++)
                         gm.deleteRect(i);
                     multSelection.clear();
                 }
@@ -406,15 +405,15 @@ int main()
         }
         onHold();
         if(!isPaused)
-            gm.applyConstraints(gm.ballAmount > maxThreads ? maxThreads : 1);
+            gm.applyConstraints(maxThreads);
         window.clear(Color::White);
         window.setTitle("Physics Playground FPS:" + gm.toString(fps()));
         window.setView(camera);
         applyUIAnchors();
         window.draw(paramText);
-        for(int r = 0; r < gm.rectAmount; r++)
+        for(unsigned int r = 0; r < gm.rectAmount; r++)
             window.draw(gm.rects[r]);
-        for(int i =0; i<gm.ballAmount; i++)
+        for(unsigned int i =0; i<gm.ballAmount; i++)
         {
             if(gm.balls[i].shouldShowStats)
                 gm.balls[i].showStats(window,mousePos,font);
@@ -434,7 +433,7 @@ int main()
                 gm.balls[i].acc.x = 0;
             }
             VertexArray line(LinesStrip, 2);
-            for(int c =0; c<gm.balls[i].anchorCount; c++)
+            for(unsigned int c =0; c<gm.balls[i].anchorCount; c++)
             {
                 line[0].color = defaultColor;
                 line[1].color = defaultColor;
@@ -468,7 +467,6 @@ int main()
                 loadContraption(mousePos, true);
                 break;
         }
-
         if(mode == 10 && isHolding)
             window.draw(selectionRect);
         int selected =getSelectedBall();
@@ -483,7 +481,7 @@ int main()
         for(RectangleShape b:buttons)
             window.draw(b);
         if(showScript)
-            testScript.showScriptVisual(window, font, ui[0].getPosition() + Vector2f(400, 0), Vector2f(400, 400));
+            gm.customConstraint.showScriptVisual(window, font, ui[0].getPosition() + Vector2f(400, 0), Vector2f(400, 400));
         window.display();
 
     }
@@ -513,15 +511,8 @@ void addConstraint()
     }
     else
     {
-
-        if(getSelectedBall() ==-1)
-        {
-            return;
-        }
-        else
-        {
-            firstElement = getSelectedBall();
-        }
+        if(getSelectedBall() ==-1) return;
+        else firstElement = getSelectedBall();
     }
 }
 void removeConstraint()
@@ -549,7 +540,7 @@ void removeConstraint()
 }
 int getSelectedBall()  // if ball is found return i else return 0, true index = i - 1
 {
-    for(int i = 0; i<gm.ballAmount; i++)
+    for(unsigned int i = 0; i<gm.ballAmount; i++)
     {
         if(gm.getDist(Vector2f(mousePos.x,mousePos.y), gm.balls[i].sprite.getPosition()) < gm.balls[i].sprite.getRadius())
         {
@@ -571,7 +562,7 @@ void drag()
 {
     if(isHolding && targetIndex == -1)
     {
-        for(int i =0; i<gm.ballAmount; i++)
+        for(unsigned int i =0; i<gm.ballAmount; i++)
         {
             int dist = gm.getDist(Vector2f(mousePos.x, mousePos.y), gm.balls[i].sprite.getPosition());
 
@@ -643,7 +634,7 @@ void applyUIAnchors()
     paramText.setScale(Vector2f(camera.getSize().x / 940, camera.getSize().y/540));
     Vector2f ratioSize = Vector2f(940/60,540/60);
 
-    for(int i = 0; i<buttons.size(); i++)
+    for(unsigned int i = 0; i<buttons.size(); i++)
     {
         buttons[i].setSize(Vector2f(camera.getSize().x/ratioSize.x,camera.getSize().y / ratioSize.y));
         buttons[i].setPosition(Vector2f(origin.x+ui[0].getSize().x/2*(i%2),
@@ -689,13 +680,13 @@ void saveContraption()
 {
     Vector2f origin = Vector2f(gm.balls[multSelection[0]].sprite.getPosition());
     map<int, int> ballsTransformed;
-    for(int i = 0; i < multSelection.size(); i++)
+    for(unsigned int i = 0; i < multSelection.size(); i++)
     {
         ballsTransformed.insert(make_pair(multSelection[i],i));
     }
     ofstream file("contraption" + gm.toString(contraptionIndex) + ".contr");
     file << multSelection.size() << endl;
-    for(int i = 0; i < multSelection.size(); i++)
+    for(unsigned int i = 0; i < multSelection.size(); i++)
     {
         physicsEngine::ball b = gm.balls[multSelection[i]];
         file << b.sprite.getPosition().x - origin.x << endl
@@ -705,7 +696,7 @@ void saveContraption()
              << b.friction << endl
              << b.rotationSpeed << endl
              << gm.balls[multSelection[i]].anchorCount << endl;
-        for(int j = 0; j < gm.balls[multSelection[i]].anchorCount; j++)
+        for(unsigned int j = 0; j < gm.balls[multSelection[i]].anchorCount; j++)
         {
             file << ballsTransformed[b.anchorPointsIndex[j]] << endl
                  << b.maxDist[j] << endl
@@ -734,7 +725,7 @@ void loadContraption(Vector2f offset, bool isPreview)
     float friction;
     string cMode;
     int ballAmount = gm.ballAmount;
-    for(int i = 0; i < ballCount; i++)
+    for(unsigned int i = 0; i < ballCount; i++)
     {
         file >> pos.x >> pos.y >> radius >> isStatic >> friction >> rotationSpeed >> anchorCount;
         if(isPreview)
@@ -744,7 +735,7 @@ void loadContraption(Vector2f offset, bool isPreview)
             preview.setOrigin(radius,radius);
             preview.setFillColor(Color(0,0,0,50));
             window.draw(preview);
-            for(int j = 0; j < anchorCount; j++)
+            for(unsigned int j = 0; j < anchorCount; j++)
             {
                 file >> anchorIndex >> maxDist >> cMode;
             }
@@ -757,11 +748,11 @@ void loadContraption(Vector2f offset, bool isPreview)
             gm.balls[gm.ballAmount-1].sprite.setFillColor(defaultColor);
             gm.balls[gm.ballAmount-1].friction = friction;
             gm.balls[gm.ballAmount-1].rotationSpeed = rotationSpeed;
-            for(int j = 0; j < anchorCount; j++)
+            for(unsigned int j = 0; j < anchorCount; j++)
             {
                 bool shouldAddConstraint = true;
                 file >> anchorIndex >> maxDist >> cMode;
-                for(int c = 0; c < gm.balls[gm.ballAmount-1].anchorCount; c++)
+                for(unsigned int c = 0; c < gm.balls[gm.ballAmount-1].anchorCount; c++)
                     if(gm.balls[gm.ballAmount-1].anchorPointsIndex[c] == anchorIndex+ballAmount)
                         shouldAddConstraint = false;
                 if(shouldAddConstraint)
@@ -774,7 +765,7 @@ void loadContraption(Vector2f offset, bool isPreview)
     }
 
 }
-void onClick()
+void onRightClick()
 {
 
 }
@@ -823,7 +814,7 @@ void onHold()
             gm.balls[gm.ballAmount-1].rotationSpeed = motorSpeed;
             firstBall = gm.ballAmount-1;
             Vector2f ballPos = gm.balls[firstBall].sprite.getPosition();
-            for(int i = 0; i<clothHeight; i++)
+            for(unsigned int i = 0; i<clothHeight; i++)
             {
                 gm.createBall(Vector2f(ballPos.x,ballPos.y +spacing*rad*(i+1)),shouldBeStatic,true);
                 gm.balls[gm.ballAmount-1].friction = 0.5;
@@ -835,7 +826,7 @@ void onHold()
             }
             if(currentChain>1)
             {
-                for(int j = 0; j<clothHeight; j++)
+                for(unsigned int j = 0; j<clothHeight; j++)
                 {
                     gm.addConstraint(gm.ballAmount-(clothHeight*2)+j-1,gm.ballAmount-clothHeight+j,constraintMode[currentConstraintMode],spacing*rad);
                 }
@@ -848,7 +839,7 @@ void onHold()
     }
     else if(mode == 16 && isHolding)
     {
-        testScript.grab(mousePos);
+        gm.customConstraint.grab(mousePos);
     }
 }
 void onLeftClick()
@@ -874,7 +865,7 @@ void onLeftClick()
         case(4):
         {
             Vector2f mousepos = Vector2f(mousePos.x,mousePos.y);
-            for(int b=0; b<gm.ballAmount; b++)
+            for(unsigned int b=0; b<gm.ballAmount; b++)
             {
                 float dist = gm.getDist(mousepos, gm.balls[b].sprite.getPosition());
                 if(dist < gm.balls[b].sprite.getRadius())
@@ -894,7 +885,7 @@ void onLeftClick()
             gm.balls[gm.ballAmount-1].sprite.setFillColor(defaultColor);
             gm.balls[gm.ballAmount-1].rotationSpeed = motorSpeed;
             double ratioAngle = (double)360/points;
-            for(int i = 0; i<points; i++)
+            for(unsigned int i = 0; i<points; i++)
             {
                 gm.createBall(origin, false, true);
                 gm.balls[gm.ballAmount-1].sprite.setPosition(origin.x+sin(gm.ballAmount*ratioAngle*rad) * 50, origin.y+cos(gm.ballAmount*ratioAngle*rad) * 50 );
@@ -914,6 +905,9 @@ void onLeftClick()
             break;
         case(14):
             loadContraption(mousePos, false);
+            break;
+        case(16):
+            gm.customConstraint.link();
             break;
         }
         if(getSelectedBall() == -1)
