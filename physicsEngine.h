@@ -5,6 +5,8 @@
 #include <cmath>
 #include <vector>
 #include <iostream>
+#include <algorithm>
+#include <array>
 #include <fstream>
 #include "UIutils.h"
 #include <functional>
@@ -425,7 +427,7 @@ public:
         Vector2f currentSize;
         Vector2f currentMousePos;
         vector<RectangleShape> rectangles;
-        vector<string> nodeLabels = {"Add", "Sub", "Mult", "Div", "Pow", "Mod", "Sqrt","Atan2", "Sin", "Cos", "Tan", "Round", "x1", "y1", "x2", "y2", "Const", "Time", "Pyth"};
+        vector<string> nodeLabels = {"Add", "Sub", "Mult", "Div", "Pow", "Mod", "Sqrt","Atan2", "Sin", "Cos", "Tan", "Round", "x1", "y1", "x2", "y2", "Const", "Time", "Pyth", "Pi"};
         customConstraintScript()
         {
 
@@ -496,6 +498,7 @@ public:
             }
             if(inputLinkIndex >= 0 && outputLinkIndex >= 0 && inputLinkIndex != outputLinkIndex)
             {
+                nodes[outputLinkIndex].outputIndexes.push_back(inputLinkIndex);
                 nodes[inputLinkIndex].inputIndexes.push_back(outputLinkIndex);
                 inputLinkIndex = -1;
                 outputLinkIndex = -1;
@@ -550,14 +553,17 @@ public:
                             ss << currentIndex;
                             ss >> out;
                             ifstream file("res/customConstraint" + out + ".constr");
-                            nodes.clear();
+
                             if(file.good())
                             {
+                                nodes.clear();
                                 int nodeAmount;
                                 file >> nodeAmount;
                                 for(int i = 0; i < nodeAmount; i++)
+                                    nodes.push_back(node());
+                                for(int i = 0; i < nodeAmount; i++)
                                 {
-                                    node newNode;
+
                                     int type;
                                     float x;
                                     float y;
@@ -566,28 +572,35 @@ public:
                                     int outputCount;
                                     file >> type >> x >> y >> val >> inputCount;
 
-                                    newNode.offset = Vector2f(x, y);
-                                    newNode.value = val;
+                                    nodes[i].offset = Vector2f(x, y);
+                                    nodes[i].value = val;
                                     for(int input = 0; input < inputCount; input++)
                                     {
                                         int inputIndex;
                                         file >> inputIndex;
-                                        newNode.inputIndexes.push_back(inputIndex);
+                                        nodes[i].inputIndexes.push_back(inputIndex);
+                                        nodes[inputIndex].outputIndexes.push_back(i);
                                     }
                                     file >> outputCount;
                                     for(int output = 0; output < outputCount; output++)
                                     {
                                         int outputIndex;
                                         file >> outputIndex;
-                                        newNode.outputIndexes.push_back(outputIndex);
+                                        nodes[i].outputIndexes.push_back(outputIndex);
+
                                     }
-                                    newNode.setType(type);
-                                    newNode.index = i;
-                                    nodes.push_back(newNode);
+                                    nodes[i].setType(type);
+                                    nodes[i].index = i;
                                 }
                             }
                             file.close();
                          }, "Load");
+            ui.addButton(currentPos + Vector2f(400, 0), Vector2f(100, 50),
+                         [this]
+                         {
+                             nodes.clear();
+                             nodes.push_back(out);
+                         }, "Clear");
         }
         void addNode(int type)
         {
@@ -596,6 +609,32 @@ public:
             newNode.setType(type);
             newNode.offset = Vector2f(currentSize.x / 2, currentSize.y / 2);
             nodes.push_back(newNode);
+        }
+        void removeNode()
+        {
+            for(int i = 0; i < nodes.size(); i++)
+            {
+                if(isHovering(i))
+                {
+                    int lastIndex = nodes.size() - 1;
+                    node& last = nodes[lastIndex];
+                    for(int j = 0; j < nodes[i].inputIndexes.size(); j++)
+                        nodes[nodes[i].inputIndexes[j]].outputIndexes.erase(find(nodes[nodes[i].inputIndexes[j]].outputIndexes.begin(), nodes[nodes[i].inputIndexes[j]].outputIndexes.end(), i));
+                        cout << nodes[i].outputIndexes.size() << endl;
+                    for(int j = 0; j < nodes[i].outputIndexes.size(); j++)
+                                                nodes[nodes[i].outputIndexes[j]].inputIndexes.erase(find(nodes[nodes[i].outputIndexes[j]].inputIndexes.begin(), nodes[nodes[i].outputIndexes[j]].inputIndexes.end(), i));
+                    nodes[i].inputIndexes.clear();
+                    nodes[i].outputIndexes.clear();
+                    for(int j = 0; j < last.inputIndexes.size(); j++)
+                        replace(nodes[last.inputIndexes[j]].inputIndexes.begin(),
+                                nodes[last.inputIndexes[j]].inputIndexes.end(), lastIndex, i);
+                    for(int j = 0; j < last.outputIndexes.size(); j++)
+                        replace(nodes[last.outputIndexes[j]].outputIndexes.begin(),
+                                nodes[last.outputIndexes[j]].outputIndexes.end(), lastIndex, i);
+                    nodes[i] = nodes[lastIndex];
+                    nodes.pop_back();
+                }
+            }
         }
         void updateUI(Event e, RenderWindow& window)
         {
@@ -608,21 +647,23 @@ public:
                 b.pos = currentPos + Vector2f(100 * ++o, 0);
             }
             ui.updateElements(e, window);
+            if(e.type == Event::KeyPressed && e.key.code == Keyboard::Left && currentIndex > 0)
+                currentIndex--;
+            else if(e.type == Event::KeyPressed && e.key.code == Keyboard::Right)
+                currentIndex++;
             for(int i = 0; i < nodes.size(); i++)
             {
-                if(e.type == Event::KeyPressed && e.key.code == Keyboard::Left)
+                if(e.type == Event::KeyPressed && e.key.code == Keyboard::Up)
                 {
                 if(nodes[i].label == "const" && isHovering(i))
-                        nodes[i].value--;
-                else if(i == 0 && currentIndex > 0)
-                    currentIndex--;
+                        nodes[i].value++;
+
+
                 }
-                else if(e.type == Event::KeyPressed && e.key.code == Keyboard::Right)
+                else if(e.type == Event::KeyPressed && e.key.code == Keyboard::Down)
                 {
                     if(nodes[i].label == "const" && isHovering(i))
-                        nodes[i].value++;
-                    else if(i == 0)
-                        currentIndex++;
+                        nodes[i].value--;
                 }
             }
             if(e.type == Event::MouseButtonReleased)
@@ -736,11 +777,7 @@ public:
                     {
                         Vector2f rectPos = pos + nodes[nodes[i].outputIndexes[o]].offset;
                         RectangleShape &outputNodeRect = rectangles[nodes[i].outputIndexes[o]];
-                        line[0].position = rectPos + Vector2f(outputNodeRect.getSize().x, centerOffset);
-                        line[1].position = nodeCircle.getPosition();
-                        line[0].color = Color::Black;
-                        line[1].color = Color::Black;
-                        window.draw(line);
+
                     }
                 }
             }

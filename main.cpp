@@ -11,7 +11,7 @@ using namespace std;
 
 UIutils uiUtil;
 physicsEngine gm;
-RenderWindow window(VideoMode::getDesktopMode(), "PlayGround", Style::Fullscreen);
+RenderWindow window(VideoMode::getDesktopMode(), "PlayGround", Style::Titlebar);
 
 Event e;
 Font font;
@@ -60,6 +60,7 @@ void saveContraption();
 void loadContraption(Vector2f offset, bool isPreview);
 void onLeftClick();
 void onClick();
+void onRightClick();
 void onHold();
 Vector2f grid(int x,int y, int w);
 Vector2f mousePos;
@@ -312,6 +313,7 @@ int main()
                     isMovingCamera = true;
                 else if(e.mouseButton.button == Mouse::Right)
                 {
+                    onRightClick();
                     int selected = getSelectedBall();
                     if(selected>-1)
                         gm.balls[selected].shouldShowStats = !gm.balls[selected].shouldShowStats;
@@ -481,7 +483,7 @@ int main()
         for(RectangleShape b:buttons)
             window.draw(b);
         if(showScript)
-            gm.customConstraint.showScriptVisual(window, font, ui[0].getPosition() + Vector2f(400, 0), Vector2f(400, 400));
+            gm.customConstraint.showScriptVisual(window, font, ui[0].getPosition() + Vector2f(ui[0].getSize().x, 0), Vector2f(400, 400));
         window.display();
 
     }
@@ -767,7 +769,13 @@ void loadContraption(Vector2f offset, bool isPreview)
 }
 void onRightClick()
 {
+    switch(mode)
+    {
+        case(16):
+            gm.customConstraint.removeNode();
+            break;
 
+    }
 }
 void onHold()
 {
