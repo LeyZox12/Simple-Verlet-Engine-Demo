@@ -422,6 +422,8 @@ public:
         int inputLinkIndex = -1;
         int currentIndex = 0;
         int outputLinkIndex = -1;
+        bool useSubSteps = true;
+        bool showLine = true;
         Vector2f grabbedOffset;
         Vector2f currentPos;
         Vector2f currentSize;
@@ -533,7 +535,7 @@ public:
                             ss >> out;
 
                             ofstream file("res/customConstraint" + out + ".constr");
-                            file << nodes.size() << endl;
+                            file << showLine<< endl << useSubSteps << endl << nodes.size() << endl;
                             for(auto& n : nodes)
                             {
                                 file << n.type << endl << n.offset.x << endl << n.offset.y << endl << n.value << endl << n.inputIndexes.size() << endl;
@@ -558,12 +560,16 @@ public:
                             {
                                 nodes.clear();
                                 int nodeAmount;
+                                int b1;
+                                int b2;
+                                file >> b1 >> b2;
+                                showLine = b1 == 1;
+                                useSubSteps = b2 == 1;
                                 file >> nodeAmount;
                                 for(int i = 0; i < nodeAmount; i++)
                                     nodes.push_back(node());
                                 for(int i = 0; i < nodeAmount; i++)
                                 {
-
                                     int type;
                                     float x;
                                     float y;
@@ -571,7 +577,6 @@ public:
                                     int inputCount;
                                     int outputCount;
                                     file >> type >> x >> y >> val >> inputCount;
-
                                     nodes[i].offset = Vector2f(x, y);
                                     nodes[i].value = val;
                                     for(int input = 0; input < inputCount; input++)
@@ -579,7 +584,6 @@ public:
                                         int inputIndex;
                                         file >> inputIndex;
                                         nodes[i].inputIndexes.push_back(inputIndex);
-                                        nodes[inputIndex].outputIndexes.push_back(i);
                                     }
                                     file >> outputCount;
                                     for(int output = 0; output < outputCount; output++)
@@ -587,7 +591,6 @@ public:
                                         int outputIndex;
                                         file >> outputIndex;
                                         nodes[i].outputIndexes.push_back(outputIndex);
-
                                     }
                                     nodes[i].setType(type);
                                     nodes[i].index = i;
@@ -601,6 +604,8 @@ public:
                              nodes.clear();
                              nodes.push_back(out);
                          }, "Clear");
+            ui.addButton(currentPos + Vector2f(500, 0), Vector2f(100, 50), [this]{showLine = !showLine;}, "Line");
+            ui.addButton(currentPos + Vector2f(600, 0), Vector2f(100, 50), [this]{useSubSteps = !useSubSteps;}, "Substeps");
         }
         void addNode(int type)
         {
@@ -704,17 +709,19 @@ public:
             label.setCharacterSize(20);
             label.setScale(0.5, 0.5);
             label.setFont(font);
-            label.setPosition(pos.x + 400, pos.y + 20);
+            label.setPosition(pos.x, pos.y + 70);
 
             stringstream ss;
             string out;
             ss << currentIndex;
             ss >> out;
             if(ifstream("res/customConstraint" + out + ".constr").good())
-                label.setString("ConstraintIndex:" + out);
+                label.setString("selected:" + out);
             else
-                label.setString("ConstraintIndex:" + out + "(empty)");
+                label.setString("selected:" + out + "(empty)");
             ui.font = font;
+            ui.buttons[4].buttonNameStr = showLine ? "Line" : "NoLine";
+            ui.buttons[5].buttonNameStr = useSubSteps ? "Sub" : "NoSub";
             currentPos = pos;
             currentSize = sizeR;
             RectangleShape scriptRect;

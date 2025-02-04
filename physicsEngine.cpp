@@ -136,7 +136,7 @@ void physicsEngine::applyConstraintsThread(int startingPoint,int endPoint)
                 {
                     float dist = getDist(balls[i].sprite.getPosition(), balls[balls[i].anchorPointsIndex[c]].sprite.getPosition());
                     float difference = dist - balls[i].maxDist[c];
-                    if(balls[i].constraintMode[c] == "Custom")
+                    if(balls[i].constraintMode[c] == "Custom" && (_ == 0 || customConstraint.useSubSteps))
                     {
                         Vector2f ball1Pos = balls[i].sprite.getPosition();
                         Vector2f ball2Pos = balls[balls[i].anchorPointsIndex[c]].sprite.getPosition();

@@ -437,11 +437,13 @@ int main()
             VertexArray line(LinesStrip, 2);
             for(unsigned int c =0; c<gm.balls[i].anchorCount; c++)
             {
+
                 line[0].color = defaultColor;
                 line[1].color = defaultColor;
                 line[0].position = gm.balls[i].sprite.getPosition();
                 line[1].position = gm.balls[gm.balls[i].anchorPointsIndex[c]].sprite.getPosition();
-                window.draw(line);
+                if(gm.balls[i].constraintMode[c] != "Custom" || gm.customConstraint.showLine)
+                    window.draw(line);
             }
             if(shouldShow)
                 window.draw(gm.balls[i].sprite);
