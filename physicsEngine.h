@@ -396,6 +396,93 @@ public:
                         return 3.1415926;
                 }
             }
+            string toString(float val)
+            {
+                stringstream ss;
+                string str;
+                ss << val;
+                ss >> str;
+                return str;
+            }
+            string getCompiled(vector<node> n, int inputIndex)
+            {
+
+                if(label == "Out")
+                {
+                    return n[inputIndexes[inputIndex]].getCompiled(n, -1);
+                }
+                else if(inputIndex == -1)
+                {
+                    vector<string> inputs;
+                    for(auto& i : inputIndexes)
+                        inputs.push_back(n[i].getCompiled(n, -1));
+                    switch(type)
+                    {
+                        case(0):
+                            return inputs[0] + "+" + inputs[1];
+                            break;
+                        case(1):
+                            return inputs[0] + "-" + inputs[1];
+                            break;
+                        case(2):
+                            return inputs[0] + "*" + inputs[1];
+                            break;
+                        case(3):
+                            return inputs[0] + "/" + inputs[1];
+                            break;
+                        case(4):
+                            return "pow(" + inputs[0] + "," + inputs[1] + ")";
+                            break;
+                        case(5):
+                            return "fmod(" + inputs[0] + "," + inputs[1] + ")";
+                            break;
+                        case(6):
+                            return "sqrt(" + inputs[0] + ")";
+                            break;
+                        case(7):
+                            return "atan2(" + inputs[0] + "," + inputs[1] + ")";
+                            break;
+                        case(8):
+                            return "sin(" + inputs[0] + ")";
+                            break;
+                        case(9):
+                            return "cos(" + inputs[0] + ")";
+                            break;
+                        case(10):
+                            return "tan(" + inputs[0] + ")";
+                            break;
+                        case(11):
+                            return "round(" + inputs[0] + ")";
+                            break;
+                        case(12):
+                            return "x1";
+                            break;
+                        case(13):
+                            return "y1";
+                            break;
+                        case(14):
+                            return "x2";
+                            break;
+                        case(15):
+                            return "y2";
+                            break;
+                        case(16):
+                            return toString(value);
+                            break;
+                        case(17):
+                            return "clock()";
+                        case(18):
+                            return "sqrt(" + inputs[0] + "*" + inputs[0] + "+" + inputs[0] + "*" + inputs[0] + ")";
+
+                            break;
+                        case(19):
+                            return "abs(" + inputs[0] + ")";
+                            break;
+                        case(20):
+                            return "3.1415926";
+                    }
+                }
+            }
             Vector2f getOutput(vector<node> n, Vector2f pos1, Vector2f pos2)
             {
                 for(int i = 0; i < n.size(); i++)
@@ -546,6 +633,11 @@ public:
                                     file << n.outputIndexes[output] << endl;
                             }
                             file.close();
+                            cout << "out <- ";
+                            cout << nodes[0].getCompiled(nodes, 1) << endl;
+
+
+
                          }, "Save");
             ui.addButton(currentPos + Vector2f(300, 0), Vector2f(100, 50),
                          [this]

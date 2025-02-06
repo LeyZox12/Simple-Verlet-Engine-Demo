@@ -145,7 +145,7 @@ void physicsEngine::applyConstraintsThread(int startingPoint,int endPoint)
                         balls[i].sprite.setPosition(newPos1);
 
                     }
-                    if(balls[i].constraintMode[c] == "Rigid" ||
+                    else if(balls[i].constraintMode[c] == "Rigid" ||
                        balls[i].constraintMode[c] == "Rigid(spin)")
                     {
                         Vector2f dir;
@@ -297,9 +297,9 @@ void physicsEngine::applyConstraintsThread(int startingPoint,int endPoint)
                 for(int n = 0; n<ballAmount; n++)
                 {
                     bool shouldCollide = true;
-                    for(auto& a: balls[i].anchorPointsIndex)
+                    /*for(auto& a: balls[i].anchorPointsIndex)
                         if(a==n)
-                            shouldCollide=false;
+                            shouldCollide=false;*/
                     if(balls[i].shouldCollide && balls[n].shouldCollide && shouldCollide && n!=i)
                     {
                         Vector2f dir;
