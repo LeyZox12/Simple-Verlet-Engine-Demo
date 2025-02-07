@@ -76,7 +76,6 @@ RectangleShape cur(Vector2f(5,5));
 RectangleShape ui[2] = {RectangleShape(Vector2f(300,540)), RectangleShape(Vector2f(960,100))};
 RectangleShape selectionRect;
 View camera(FloatRect(0,0,960,540));
-
 void start()
 {
     ifstream config("res/config.ini");
@@ -107,7 +106,7 @@ void start()
                <<0.01 << endl
                << "DefaultColor= r: 0 g: 0 b: 0";
     }
-    camera.move(0,750);
+    camera.move(0,-500);
     if(!font.loadFromFile("res/font.ttf"))
         cout <<"Error, could not load font.ttf\n";
     if(!texture.loadFromFile("res/spriteSheet.png"))
@@ -127,14 +126,11 @@ void start()
         u.setFillColor(defaultColor);
     for(auto& b:buttons)
         b.setFillColor(Color::White);
-
-
     for(unsigned int i =0; i<buttonCount; i++)
     {
         buttons[i].setTextureRect({(i%3)*16,round((i/3))*16,16,16});
         buttons[i].setPosition(grid(i,1,2));
     }
-
     for(auto& b:buttons)
     {
         window.draw(b);
@@ -144,12 +140,13 @@ void start()
     {
         b.setSize(Vector2f(b.getSize().x-15, b.getSize().y-15));
     }
-    ui[1].setPosition(0,1080);
+    ui[1].setPosition(0,0);
     ui[2].setPosition(0,0);
 }
 int main()
 {
     start();
+    window.setFramerateLimit(60);
     while (window.isOpen())
     {
         while(window.pollEvent(e))
@@ -298,10 +295,7 @@ int main()
                     else if(scroll>0)
                         rad+=scroll;
                 }
-
-
             }
-
             if(e.type == Event::MouseButtonPressed)
             {
                 if(e.mouseButton.button == Mouse::Left)
@@ -355,7 +349,6 @@ int main()
                 else if(UIselection(buttons[16]))
                     showScript = !showScript;
             }
-
             if(e.type == Event::MouseButtonReleased)
             {
                 if(e.mouseButton.button == Mouse::Left)
@@ -367,11 +360,9 @@ int main()
                 }
                 else if(e.mouseButton.button == Mouse::Middle)
                     isMovingCamera = false;
-
             }
             if(e.type == Event::KeyPressed && e.key.code == Keyboard::Space)
                 isPaused = !isPaused;
-
         }
         CircleShape preview;
         switch(mode)
@@ -412,6 +403,7 @@ int main()
         window.setTitle("Physics Playground FPS:" + gm.toString(fps()));
         window.setView(camera);
         applyUIAnchors();
+
         window.draw(paramText);
         for(unsigned int r = 0; r < gm.rectAmount; r++)
             window.draw(gm.rects[r]);
@@ -424,10 +416,9 @@ int main()
                 gm.balls[i].acc.y +=98.8;
                 gm.balls[i].upDatePos((float)1/60);
             }
-
-            if(gm.balls[i].sprite.getPosition().y >= 1080-gm.balls[i].sprite.getRadius())
+            if(gm.balls[i].sprite.getPosition().y >= ui[1].getPosition().y - gm.balls[i].sprite.getRadius())
             {
-                gm.balls[i].sprite.setPosition(gm.balls[i].sprite.getPosition().x,1080-gm.balls[i].sprite.getRadius());
+                gm.balls[i].sprite.setPosition(gm.balls[i].sprite.getPosition().x,ui[1].getPosition().y - gm.balls[i].sprite.getRadius());
                 gm.balls[i].updateFriction();
             }
             else
@@ -631,7 +622,7 @@ void applyUIAnchors()
 {
     Vector2f origin = window.mapPixelToCoords(Vector2i(0,0));
     ui[0].setPosition(origin);
-    ui[1].setPosition(window.mapPixelToCoords(Vector2i(0,1080)).x,1080);
+    ui[1].setPosition(window.mapPixelToCoords(Vector2i(0,1080)).x,0);
     ui[0].setSize(Vector2f(camera.getSize().x/(940/200),camera.getSize().y));
     ui[1].setSize(Vector2f(camera.getSize().x, camera.getSize().y));
     paramText.setPosition(window.mapPixelToCoords(Vector2i((940),paramText.getCharacterSize())));
