@@ -6,6 +6,7 @@
 #include <vector>
 #include <fstream>
 
+
 using namespace sf;
 using namespace std;
 
@@ -13,7 +14,6 @@ UIutils uiUtil;
 physicsEngine gm;
 RenderWindow window(VideoMode::getDesktopMode(), "PlayGround", Style::Titlebar);
 
-Event e;
 Font font;
 Texture texture;
 int mode=0;
@@ -71,11 +71,750 @@ vector<int> multSelection;
 vector<RectangleShape> buttons;
 vector<string> constraintMode = {"Rigid","Rope", "Spring", "Custom"};
 string buffer;
-Text paramText;
 RectangleShape cur(Vector2f(5,5));
 RectangleShape ui[2] = {RectangleShape(Vector2f(300,540)), RectangleShape(Vector2f(960,100))};
 RectangleShape selectionRect;
-View camera(FloatRect(0,0,960,540));
+View camera({0,0},{960,540});
+struct customConstraintScript
+    {
+        class node
+        {
+            /*
+            0:Add
+            1:Sub
+            2:Mult
+            3:Div
+            4:Pow
+            5:Mod
+            6:Sqrt
+            7:Atan2
+            8:sin
+            9:cos
+            10:tan
+            11:round
+            12:x1
+            13:y1
+            14:x2
+            15:y2
+            16:const
+            17:time
+            18:pythagorean theorem
+            19:abs
+            20:pi
+            21:out
+            */
+            public:
+                int index;
+                int inputCount;
+                int outputCount;
+                int type;
+                float value;
+                string label;
+                vector<int> inputIndexes;
+                vector<int> outputIndexes;
+                vector<string> outputTypes;
+                Vector2f output1;
+                Vector2f output2;
+                Vector2f offset = Vector2f(0, 0);
+                RectangleShape scriptVisual;
+                node()
+                {
+                    value = 0;
+                }
+                void setType(int type)
+                {
+                    this->type = type;
+                    switch(type)
+                    {
+                        case(0):
+                            label = "Add";
+                            inputCount = 2;
+                            outputCount = 1;
+                            break;
+                        case(1):
+                            label = "Sub";
+                            inputCount = 2;
+                            outputCount = 1;
+                            break;
+                        case(2):
+                            label = "Mult";
+                            inputCount = 2;
+                            outputCount = 1;
+                            break;
+                        case(3):
+                            label = "Div";
+                            inputCount = 2;
+                            outputCount = 1;
+                            break;
+                        case(4):
+                            label = "Pow";
+                            inputCount = 2;
+                            outputCount = 1;
+                            break;
+                        case(5):
+                            label = "Mod";
+                            inputCount = 2;
+                            outputCount = 1;
+                            break;
+                        case(6):
+                            label = "Sqrt";
+                            inputCount = 1;
+                            outputCount = 1;
+                            break;
+                        case(7):
+                            label = "Atan2";
+                            inputCount = 2;
+                            outputCount = 1;
+                            break;
+                        case(8):
+                            label = "Sin";
+                            inputCount = 1;
+                            outputCount = 1;
+                            break;
+                        case(9):
+                            label = "Cos";
+                            inputCount = 1;
+                            outputCount = 1;
+                            break;
+                        case(10):
+                            label = "Tan";
+                            inputCount = 1;
+                            outputCount = 1;
+                            break;
+                        case(11):
+                            label = "Round";
+                            inputCount = 1;
+                            outputCount = 1;
+                            break;
+                        case(12):
+                            label = "x1";
+                            inputCount = 0;
+                            outputCount = 1;
+                            break;
+                        case(13):
+                            label = "y1";
+                            inputCount = 0;
+                            outputCount = 1;
+                            break;
+                        case(14):
+                            label = "x2";
+                            inputCount = 0;
+                            outputCount = 1;
+                            break;
+                        case(15):
+                            label = "y2";
+                            inputCount = 0;
+                            outputCount = 1;
+                            break;
+                        case(16):
+                            label = "const";
+                            inputCount = 0;
+                            outputCount = 1;
+                            break;
+                        case(17):
+                            label = "Time";
+                            inputCount = 0;
+                            outputCount = 1;
+                            break;
+                        case(18):
+                            label = "Pyth";
+                            inputCount = 2;
+                            outputCount = 1;
+                            break;
+                        case(19):
+                            label = "Abs";
+                            inputCount = 1;
+                            outputCount = 1;
+                        case(20):
+                            label = "pi";
+                            inputCount = 0;
+                            outputCount = 1;
+                            break;
+                        case(21):
+                            label = "Out";
+                            inputCount = 2;
+                            outputCount = 0;
+                            break;
+                    }
+                    for(int i = 0; i < inputCount; i++)
+                    {
+                        CircleShape inputCircle;
+                    }
+                }
+            float getValue(vector<node> n)
+            {
+                vector<float> inputs;
+                for(auto& i : inputIndexes)
+                    inputs.push_back(n[i].getValue(n));
+                switch(type)
+                {
+                    case(0):
+                        return inputs[0] + inputs[1];
+                        break;
+                    case(1):
+                        return inputs[0] - inputs[1];
+                        break;
+                    case(2):
+                        return inputs[0] * inputs[1];
+                        break;
+                    case(3):
+                        return inputs[0] / inputs[1];
+                        break;
+                    case(4):
+                        return pow(inputs[0], inputs[1]);
+                        break;
+                    case(5):
+                        return fmod(inputs[0], inputs[1]);
+                        break;
+                    case(6):
+                        return sqrt(inputs[0]);
+                        break;
+                    case(7):
+                        return atan2(inputs[0], inputs[1]);
+                        break;
+                    case(8):
+                        return sin(inputs[0]);
+                        break;
+                    case(9):
+                        return cos(inputs[0]);
+                        break;
+                    case(10):
+                        return tan(inputs[0]);
+                        break;
+                    case(11):
+                        return round(inputs[0]);
+                        break;
+                    case(12):
+                        return value;
+                        break;
+                    case(13):
+                        return value;
+                        break;
+                    case(14):
+                        return value;
+                        break;
+                    case(15):
+                        return value;
+                        break;
+                    case(16):
+                        return value;
+                        break;
+                    case(17):
+                        return clock();
+                    case(18):
+                        return sqrt(inputs[0] * inputs[0] + inputs[1] * inputs[1]);
+                        break;
+                    case(19):
+                        return abs(inputs[0]);
+                        break;
+                    case(20):
+                        return 3.1415926;
+                }
+            }
+            string toString(float val)
+            {
+                stringstream ss;
+                string str;
+                ss << val;
+                ss >> str;
+                return str;
+            }
+            string getCompiled(vector<node> n, int inputIndex)
+            {
+                if(label == "Out")
+                {
+                    return n[inputIndexes[inputIndex]].getCompiled(n, -1);
+                }
+                else if(inputIndex == -1)
+                {
+                    vector<string> inputs;
+                    for(auto& i : inputIndexes)
+                        inputs.push_back(n[i].getCompiled(n, -1));
+                    switch(type)
+                    {
+                        case(0):
+                            return "(" + inputs[0] + "+" + inputs[1] + ")";
+                            break;
+                        case(1):
+                            return "(" + inputs[0] + "-" + inputs[1] + ")";
+                            break;
+                        case(2):
+                            return "(" + inputs[0] + "*" + inputs[1] + ")";
+                            break;
+                        case(3):
+                            return "(" + inputs[0] + "/" + inputs[1] + ")";
+                            break;
+                        case(4):
+                            return "^(" + inputs[0] + "," + inputs[1] + ")";
+                            break;
+                        case(5):
+                            return "%(" + inputs[0] + "," + inputs[1] + ")";
+                            break;
+                        case(6):
+                            return "~(" + inputs[0] + ")";
+                            break;
+                        case(7):
+                            return "°(" + inputs[0] + "," + inputs[1] + ")";
+                            break;
+                        case(8):
+                            return "s(" + inputs[0] + ")";
+                            break;
+                        case(9):
+                            return "c(" + inputs[0] + ")";
+                            break;
+                        case(10):
+                            return "t(" + inputs[0] + ")";
+                            break;
+                        case(11):
+                            return "r(" + inputs[0] + ")";
+                            break;
+                        case(12):
+                            return "x";
+                            break;
+                        case(13):
+                            return "y";
+                            break;
+                        case(14):
+                            return "X";
+                            break;
+                        case(15):
+                            return "Y";
+                            break;
+                        case(16):
+                            return "" + toString(value) + "";
+                            break;
+                        case(17):
+                            return toString(clock());
+                        case(18):
+                            return "~(" + inputs[0] + "*" + inputs[0] + "+" + inputs[1] + "*" + inputs[1] + ")";
+
+                            break;
+                        case(19):
+                            return "|(" + inputs[0] + ")";
+                            break;
+                        case(20):
+                            return "3.1415926";
+                    }
+                }
+            }
+            Vector2f getOutput(vector<node> n, Vector2f pos1, Vector2f pos2)
+            {
+                for(int i = 0; i < n.size(); i++)
+                {
+                    if(n[i].type == 12) n[i].value = pos1.x;
+                    if(n[i].type == 13) n[i].value = pos1.y;
+                    if(n[i].type == 14) n[i].value = pos2.x;
+                    if(n[i].type == 15) n[i].value = pos2.y;
+                }
+                if(label == "Out")
+                {
+                    Vector2f out = Vector2f(n[inputIndexes[0]].getValue(n), n[inputIndexes[1]].getValue(n));
+                    return out;
+                }
+            }
+        };
+        vector<node> nodes;
+        node out;
+        UIutils ui;
+        int nodeSizeX = 50;
+        int centerOffset = 30;
+        int grabbedIndex = -1;
+        int inputLinkIndex = -1;
+        int currentIndex = 0;
+        int outputLinkIndex = -1;
+        bool useSubSteps = true;
+        bool showLine = true;
+        Vector2f grabbedOffset;
+        Vector2f currentPos;
+        Vector2f currentSize;
+        Vector2f currentMousePos;
+        vector<RectangleShape> rectangles;
+        vector<string> instructions;
+        vector<string> nodeLabels = {"Add", "Sub", "Mult", "Div", "Pow", "Mod", "Sqrt","Atan2", "Sin", "Cos", "Tan", "Round", "x1", "y1", "x2", "y2", "Const", "Time", "Pyth", "Pi"};
+        customConstraintScript()
+        {
+
+        }
+
+        void unLink()
+        {
+            for(int i = 0; i < nodes.size(); i++)
+            {
+                if(inputLinkIndex == -1)
+                    for(int n = 0; n < nodes[i].inputCount; n++)
+                    {
+                        Vector2f inputCirclePos = rectangles[i].getPosition() + Vector2f(-5, centerOffset + 10 * n - 5);
+                        Vector2f diff = inputCirclePos - currentMousePos;
+                        float dist = sqrt(diff.x * diff.x + diff.y * diff.y);
+                        if(dist < 10)
+                        {
+                            inputLinkIndex = i;
+                        }
+                    }
+                if(outputLinkIndex == -1)
+                    for(int o = 0; o < nodes[i].outputCount; o++)
+                    {
+
+                        Vector2f outputCirclePos = rectangles[i].getPosition() + Vector2f(nodeSizeX + 5, centerOffset + 10 * o - 5);
+                        Vector2f diff = outputCirclePos - currentMousePos;
+                        float dist = sqrt(diff.x * diff.x + diff.y * diff.y);
+                        if(dist < 10)
+                        {
+                            outputLinkIndex = i;
+                        }
+                    }
+            }
+            if(inputLinkIndex >= 0 && outputLinkIndex >= 0 && inputLinkIndex != outputLinkIndex)
+            {
+                vector<int>& inputIndexes = nodes[inputLinkIndex].inputIndexes;
+                inputIndexes.erase(find(inputIndexes.begin(), inputIndexes.end(), outputLinkIndex));
+                inputLinkIndex = -1;
+                outputLinkIndex = -1;
+            }
+        }
+        vector<string> separate(string hayStack, string needle)
+        {
+            vector<string> separated;
+            string current = "";
+            bool shouldAdd = false;
+            for(auto& c : hayStack)
+            {
+                if(c == needle && current == "")
+                    shouldAdd = true;
+                else if(shouldAdd && c != needle)
+                    current += c;
+                else if(shouldAdd && c == needle)
+                {
+                    shouldAdd = false;
+                    separated.push_back(current);
+                    cout << current << endl;
+                    current = "";
+                }
+            }
+            return separated;
+        }
+        void link()
+        {
+            for(int i = 0; i < nodes.size(); i++)
+            {
+                if(inputLinkIndex == -1)
+                    for(int n = 0; n < nodes[i].inputCount; n++)
+                    {
+                        Vector2f inputCirclePos = rectangles[i].getPosition() + Vector2f(-5, centerOffset + 10 * n );
+                        Vector2f diff = inputCirclePos - currentMousePos;
+                        float dist = sqrt(diff.x * diff.x + diff.y * diff.y);
+                        if(dist < 10)
+                        {
+                            inputLinkIndex = i;
+                        }
+                    }
+                if(outputLinkIndex == -1)
+                    for(int o = 0; o < nodes[i].outputCount; o++)
+                    {
+
+                        Vector2f outputCirclePos = rectangles[i].getPosition() + Vector2f(nodeSizeX + 5, centerOffset + 10 * o);
+                        Vector2f diff = outputCirclePos - currentMousePos;
+                        float dist = sqrt(diff.x * diff.x + diff.y * diff.y);
+                        if(dist < 10)
+                        {
+                            outputLinkIndex = i;
+                        }
+                    }
+            }
+            if(inputLinkIndex >= 0 && outputLinkIndex >= 0 && inputLinkIndex != outputLinkIndex)
+            {
+                nodes[outputLinkIndex].outputIndexes.push_back(inputLinkIndex);
+                nodes[inputLinkIndex].inputIndexes.push_back(outputLinkIndex);
+                inputLinkIndex = -1;
+                outputLinkIndex = -1;
+            }
+        }
+        void init(Font uiFont)
+        {
+            out.setType(21);
+            out.offset = Vector2f(200, 100);
+            nodes.push_back(out);
+            ui.font = uiFont;
+            ui.addDropDown(currentPos, Vector2f(100,50), nodeLabels, 3, "Nodes");
+            ui.addButton(currentPos + Vector2f(100, 0), Vector2f(100,50),
+                         [this]
+                         {
+                            if(ui.dropDowns[0].value != "Nodes")
+                            {
+                                node newNode;
+                                newNode.index = nodes.size();
+                                newNode.setType(ui.dropDowns[0].valIndex);
+                                newNode.offset = Vector2f(currentSize.x / 2, currentSize.y / 2);
+                                nodes.push_back(newNode);
+                            }
+                         } , "Create");
+            ui.addButton(currentPos + Vector2f(200, 0), Vector2f(100, 50),
+                         [this]
+                         {
+                            stringstream ss;
+                            string out;
+                            ss << currentIndex;
+                            ss >> out;
+
+                            ofstream file("res/customConstraint" + out + ".constr");
+                            file << showLine<< endl << useSubSteps << endl << nodes.size() << endl;
+                            for(auto& n : nodes)
+                            {
+                                file << n.type << endl << n.offset.x << endl << n.offset.y << endl << n.value << endl << n.inputIndexes.size() << endl;
+                                for(int input = 0; input < n.inputIndexes.size(); input++)
+                                        file << n.inputIndexes[input] << endl;
+                                file << n.outputIndexes.size() << endl;
+                                for(int output = 0; output < n.outputIndexes.size(); output++)
+                                    file << n.outputIndexes[output] << endl;
+                            }
+                            file.close();
+                            cout << "outX <- " << nodes[0].getCompiled(nodes, 0) << endl;
+                            cout << "outY <- " << nodes[0].getCompiled(nodes, 1) << endl;
+                         }, "Compile");
+            ui.addButton(currentPos + Vector2f(300, 0), Vector2f(100, 50),
+                         [this]
+                         {
+                            stringstream ss;
+                            string out;
+                            ss << currentIndex;
+                            ss >> out;
+                            ifstream file("res/customConstraint" + out + ".constr");
+
+                            if(file.good())
+                            {
+                                nodes.clear();
+                                int nodeAmount;
+                                int b1;
+                                int b2;
+                                file >> b1 >> b2;
+                                showLine = b1 == 1;
+                                useSubSteps = b2 == 1;
+                                file >> nodeAmount;
+                                for(int i = 0; i < nodeAmount; i++)
+                                    nodes.push_back(node());
+                                for(int i = 0; i < nodeAmount; i++)
+                                {
+                                    int type;
+                                    float x;
+                                    float y;
+                                    float val;
+                                    int inputCount;
+                                    int outputCount;
+                                    file >> type >> x >> y >> val >> inputCount;
+                                    nodes[i].offset = Vector2f(x, y);
+                                    nodes[i].value = val;
+                                    for(int input = 0; input < inputCount; input++)
+                                    {
+                                        int inputIndex;
+                                        file >> inputIndex;
+                                        nodes[i].inputIndexes.push_back(inputIndex);
+                                    }
+                                    file >> outputCount;
+                                    for(int output = 0; output < outputCount; output++)
+                                    {
+                                        int outputIndex;
+                                        file >> outputIndex;
+                                        nodes[i].outputIndexes.push_back(outputIndex);
+                                    }
+                                    nodes[i].setType(type);
+                                    nodes[i].index = i;
+                                }
+                            }
+                            file.close();
+                         }, "Load");
+            ui.addButton(currentPos + Vector2f(400, 0), Vector2f(100, 50),
+                         [this]
+                         {
+                             nodes.clear();
+                             nodes.push_back(out);
+                         }, "Clear");
+            ui.addButton(currentPos + Vector2f(500, 0), Vector2f(100, 50), [this]{showLine = !showLine;}, "Line");
+            ui.addButton(currentPos + Vector2f(600, 0), Vector2f(100, 50), [this]{useSubSteps = !useSubSteps;}, "Substeps");
+        }
+        void addNode(int type)
+        {
+            node newNode;
+            newNode.index = nodes.size();
+            newNode.setType(type);
+            newNode.offset = Vector2f(currentSize.x / 2, currentSize.y / 2);
+            nodes.push_back(newNode);
+        }
+        void removeNode()
+        {
+            for(int i = 0; i < nodes.size(); i++)
+            {
+                if(isHovering(i))
+                {
+                    int lastIndex = nodes.size() - 1;
+                    node& last = nodes[lastIndex];
+                    for(int j = 0; j < nodes[i].inputIndexes.size(); j++)
+                        nodes[nodes[i].inputIndexes[j]].outputIndexes.erase(find(nodes[nodes[i].inputIndexes[j]].outputIndexes.begin(), nodes[nodes[i].inputIndexes[j]].outputIndexes.end(), i));
+                        cout << nodes[i].outputIndexes.size() << endl;
+                    for(int j = 0; j < nodes[i].outputIndexes.size(); j++)
+                                                nodes[nodes[i].outputIndexes[j]].inputIndexes.erase(find(nodes[nodes[i].outputIndexes[j]].inputIndexes.begin(), nodes[nodes[i].outputIndexes[j]].inputIndexes.end(), i));
+                    nodes[i].inputIndexes.clear();
+                    nodes[i].outputIndexes.clear();
+                    for(int j = 0; j < last.inputIndexes.size(); j++)
+                        replace(nodes[last.inputIndexes[j]].inputIndexes.begin(),
+                                nodes[last.inputIndexes[j]].inputIndexes.end(), lastIndex, i);
+                    for(int j = 0; j < last.outputIndexes.size(); j++)
+                        replace(nodes[last.outputIndexes[j]].outputIndexes.begin(),
+                                nodes[last.outputIndexes[j]].outputIndexes.end(), lastIndex, i);
+                    nodes[i] = nodes[lastIndex];
+                    nodes.pop_back();
+                }
+            }
+        }
+        void updateUI(Event e, RenderWindow& window)
+        {
+            currentMousePos = window.mapPixelToCoords(Vector2i(Mouse::getPosition(window).x,Mouse::getPosition(window).y));
+            ui.dropDowns[0].elementsNames = nodeLabels;
+            ui.dropDowns[0].pos = currentPos;
+            int o = 0;
+            for(auto& b : ui.buttons)
+            {
+                b.pos = currentPos + Vector2f(100 * ++o, 0);
+            }
+            ui.updateElements(e, window);
+            if(e.is<Event::KeyPressed>() && e.getIf<Event::KeyPressed>() -> code == Keyboard::Key::Left && currentIndex > 0)
+                currentIndex--;
+            else if(e.is<Event::KeyPressed>() && e.getIf<Event::KeyPressed>() -> code == Keyboard::Key::Right)
+                currentIndex++;
+            for(int i = 0; i < nodes.size(); i++)
+            {
+                if(e.is<Event::KeyPressed>() && e.getIf<Event::KeyPressed>() -> code == Keyboard::Key::Up)
+                {
+                if(nodes[i].label == "const" && isHovering(i))
+                        nodes[i].value++;
+
+
+                }
+                else if(e.is<Event::KeyPressed>() && e.getIf<Event::KeyPressed>() -> code == Keyboard::Key::Down)
+                {
+                    if(nodes[i].label == "const" && isHovering(i))
+                        nodes[i].value--;
+                }
+            }
+            if(e.is<Event::MouseButtonReleased>())
+            {
+                grabbedIndex = -1;
+            }
+        }
+        bool isHovering(int index)
+        {
+            Vector2f rectPos = currentPos + nodes[index].offset;
+            Vector2f rectSize = Vector2f(nodeSizeX, centerOffset + 10 * nodes[index].inputCount);
+            return (currentMousePos.x > rectPos.x &&
+                    currentMousePos.x < rectPos.x + rectSize.x &&
+                    currentMousePos.y > rectPos.y &&
+                    currentMousePos.y < rectPos.y + rectSize.y);
+        }
+        void grab(Vector2f mousePos)
+        {
+            if(grabbedIndex == -1)
+                for(int i = 0; i < nodes.size(); i++)
+                {
+                    Vector2f rectPos = currentPos + nodes[i].offset;
+                    Vector2f rectSize = Vector2f(nodeSizeX, centerOffset + 10 * nodes[i].inputCount);
+                    if(isHovering(i))
+                    {
+                        grabbedIndex = i;
+                        grabbedOffset = Vector2f(mousePos - rectPos);
+                        break;
+                    }
+                }
+            if(grabbedIndex > -1)
+                nodes[grabbedIndex].offset = Vector2f(currentMousePos - currentPos - grabbedOffset);
+        }
+        void showScriptVisual(RenderWindow& window, Font font, Vector2f pos, Vector2f sizeR)
+        {
+            Text label(font, "", 20);
+            label.setScale(Vector2f(0.5, 0.5));
+            label.setPosition(Vector2f(pos.x, pos.y + 70));
+            stringstream ss;
+            string out;
+            ss << currentIndex;
+            ss >> out;
+            if(ifstream("res/customConstraint" + out + ".constr").good())
+                label.setString("selected:" + out);
+            else
+                label.setString("selected:" + out + "(empty)");
+            ui.font = font;
+            ui.buttons[4].buttonNameStr = showLine ? "Line" : "NoLine";
+            ui.buttons[5].buttonNameStr = useSubSteps ? "Sub" : "NoSub";
+            currentPos = pos;
+            currentSize = sizeR;
+            RectangleShape scriptRect;
+            rectangles.clear();
+            scriptRect.setPosition(Vector2f(pos.x, pos.y));
+            scriptRect.setSize(Vector2f(window.getSize().x, window.getSize().y));
+            scriptRect.setFillColor(Color(50, 50, 50, 200));
+            window.draw(scriptRect);
+            window.draw(label);
+            for(int i = 0; i < nodes.size(); i++)
+            {
+                RectangleShape nodeRect;
+                nodeRect.setPosition(pos + nodes[i].offset);
+                nodeRect.setFillColor(Color::Black);
+                nodeRect.setSize(Vector2f(nodeSizeX, centerOffset + 10 * nodes[i].inputCount));
+                window.draw(nodeRect);
+                rectangles.push_back(nodeRect);
+
+                label.setPosition(pos + nodes[i].offset);
+                if(nodes[i].label == "const")
+                {
+                    stringstream ss;
+                    string strValue;
+                    ss << nodes[i].value;
+                    ss >> strValue;
+                    label.setString(nodes[i].label + "\nvalue:" + strValue);
+                }
+                else
+                label.setString(nodes[i].label);
+                if(i == 0)
+                    label.setString("BallPos");
+
+                label.setFillColor(Color::White);
+                window.draw(label);
+                ui.displayElements(window);
+            }
+            for(int i = 0; i < nodes.size(); i++)
+            {
+                CircleShape nodeCircle(5);
+                nodeCircle.setFillColor(Color(0, 0, 0));
+                nodeCircle.setOrigin(Vector2f(5, 5));
+                VertexArray line(PrimitiveType::LineStrip, 2);
+                for(int n = 0; n < nodes[i].inputCount; n++)
+                {
+                    nodeCircle.setPosition(rectangles[i].getPosition() + Vector2f(0, centerOffset + 10 * n));
+                    window.draw(nodeCircle);
+                    if(nodes[i].inputIndexes.size() > n)
+                    {
+                        Vector2f rectPos = pos + nodes[nodes[i].inputIndexes[n]].offset;
+                        RectangleShape &inputNodeRect = rectangles[nodes[i].inputIndexes[n]];
+                        line[0].position = rectPos + Vector2f(inputNodeRect.getSize().x, centerOffset);
+                        line[1].position = nodeCircle.getPosition();
+                        line[0].color = Color::Black;
+                        line[1].color = Color::Black;
+                        window.draw(line);
+                    }
+                }
+                for(int o = 0; o < nodes[i].outputCount; o++)
+                {
+                    nodeCircle.setPosition(rectangles[i].getPosition() + Vector2f(rectangles[i].getSize().x, centerOffset + 10 * o));
+                    window.draw(nodeCircle);
+                    if(nodes[i].outputIndexes.size() > o)
+                    {
+                        Vector2f rectPos = pos + nodes[nodes[i].outputIndexes[o]].offset;
+                        RectangleShape &outputNodeRect = rectangles[nodes[i].outputIndexes[o]];
+
+                    }
+                }
+            }
+                ui.displayElements(window);
+            }
+        };
+customConstraintScript customConstraint;
 void start()
 {
     ifstream config("res/config.ini");
@@ -106,15 +845,12 @@ void start()
                <<0.01 << endl
                << "DefaultColor= r: 0 g: 0 b: 0";
     }
-    camera.move(0,-500);
-    if(!font.loadFromFile("res/font.ttf"))
+    camera.move(Vector2f(0,-500));
+    if(!font.openFromFile("res/font.ttf"))
         cout <<"Error, could not load font.ttf\n";
     if(!texture.loadFromFile("res/spriteSheet.png"))
         cout<<"Error, could not load spriteSheet.png\n";
-    gm.customConstraint.init(font);
-    paramText.setPosition(0,0);
-    paramText.setFont(font);
-    paramText.setColor(defaultColor);
+    customConstraint.init(font);
     cur.setFillColor(Color::Green);
     window.setVerticalSyncEnabled(true);
     window.setKeyRepeatEnabled(true);
@@ -128,7 +864,7 @@ void start()
         b.setFillColor(Color::White);
     for(unsigned int i =0; i<buttonCount; i++)
     {
-        buttons[i].setTextureRect({(i%3)*16,round((i/3))*16,16,16});
+        buttons[i].setTextureRect(IntRect({(i%3)*16,round((i/3))*16},{16,16}));
         buttons[i].setPosition(grid(i,1,2));
     }
     for(auto& b:buttons)
@@ -140,8 +876,8 @@ void start()
     {
         b.setSize(Vector2f(b.getSize().x-15, b.getSize().y-15));
     }
-    ui[1].setPosition(0,0);
-    ui[2].setPosition(0,0);
+    ui[1].setPosition({0,0});
+    ui[2].setPosition({0,0});
 }
 int main()
 {
@@ -149,12 +885,12 @@ int main()
     window.setFramerateLimit(60);
     while (window.isOpen())
     {
-        while(window.pollEvent(e))
+        while(const std::optional e = window.pollEvent())
         {
-            gm.customConstraint.updateUI(e, window);
-            if(e.type == Event::Closed)
+            customConstraint.updateUI(e, window);
+            if(e->is<Event::Closed>())
                 window.close();
-            if(e.type == Event::MouseMoved)
+            if(e->is<Event::MouseMoved>())
             {
                 if(isMovingCamera && mode == 8)
                 {
@@ -166,14 +902,14 @@ int main()
                 mousePos = newPos;
 
             }
-            if(e.type == Event::KeyReleased)
+            if(e->is<Event::KeyReleased>())
             {
                 int selected = getSelectedBall();
-                if(e.key.code == Keyboard::F11)
+                if(e->getIf<Event::KeyPressed>() -> code == Keyboard::Key::F11)
                 {
 
                 }
-                if(e.key.code == Keyboard::Delete)
+                if(e->getIf<Event::KeyPressed>() -> code == Keyboard::Key::Delete)
                 {
                     for(unsigned int i = 0; i < gm.rectAmount; i++)
                         if(UIselection(gm.rects[i]))
@@ -185,11 +921,11 @@ int main()
                     for(unsigned int s = 0; s < multSelection.size(); s++)
                         gm.removeBall(multSelection[s]);
                     multSelection.clear();
-                    gm.customConstraint.unLink();
+                    customConstraint.unLink();
                 }
-                if(e.key.code == Keyboard::R && mode == 10)
+                if(e->getIf<Event::KeyPressed>() -> code == Keyboard::Key::R && mode == 10)
                     gm.createRect(selectionRect.getPosition(), selectionRect.getSize());
-                if(e.key.code == Keyboard::Up)
+                if(e->getIf<Event::KeyPressed>() -> code == Keyboard::Key::Up)
                 {
                     switch(mode)
                     {
@@ -198,7 +934,7 @@ int main()
                         break;
                     }
                 }
-                if(e.key.code == Keyboard::Down)
+                if(e->getIf<Event::KeyPressed>() -> code == Keyboard::Key::Down)
                 {
                     switch(mode)
                     {
@@ -207,7 +943,7 @@ int main()
                         break;
                     }
                 }
-                if(e.key.code == Keyboard::Left)
+                if(e->getIf<Event::KeyPressed>() -> code == Keyboard::Key::Left)
                     switch(mode)
                     {
                     case(2):
@@ -241,7 +977,7 @@ int main()
                             contraptionIndex--;
                         break;
                     }
-                if(e.key.code == Keyboard::Right)
+                if(e->getIf<Event::KeyPressed>() -> code == Keyboard::Key::Right)
                     switch(mode)
                     {
                     case(2):
@@ -272,7 +1008,7 @@ int main()
                         break;
                     }
             }
-            if(e.type == Event::MouseWheelScrolled)
+            if(e->is<Event::MouseWheelScrolled>())
             {
                 int scroll = e.mouseWheelScroll.delta;
                 if(mode == 8)
@@ -398,7 +1134,20 @@ int main()
         }
         onHold();
         if(!isPaused)
+        {
             gm.applyConstraints(maxThreads);
+            for(int i = 0; i < gm.ballAmount; i++)
+            {
+                physicsEngine::ball& b = gm.balls[i];
+                for(int c = 0; c < b.anchorCount; c++)
+                {
+                    if(b.constraintMode[c] == "Custom")
+                    {
+                        b.sprite.setPosition(customConstraint.nodes[0].getOutput(customConstraint.nodes, b.sprite.getPosition(), gm.balls[b.anchorPointsIndex[c]].sprite.getPosition()));
+                    }
+                }
+            }
+        }
         window.clear(Color::White);
         window.setTitle("Physics Playground FPS:" + gm.toString(fps()));
         window.setView(camera);
@@ -433,7 +1182,7 @@ int main()
                 line[1].color = defaultColor;
                 line[0].position = gm.balls[i].sprite.getPosition();
                 line[1].position = gm.balls[gm.balls[i].anchorPointsIndex[c]].sprite.getPosition();
-                if(gm.balls[i].constraintMode[c] != "Custom" || gm.customConstraint.showLine)
+                if(gm.balls[i].constraintMode[c] != "Custom" || customConstraint.showLine)
                     window.draw(line);
             }
             if(shouldShow)
@@ -476,7 +1225,7 @@ int main()
         for(RectangleShape b:buttons)
             window.draw(b);
         if(showScript)
-            gm.customConstraint.showScriptVisual(window, font, ui[0].getPosition() + Vector2f(ui[0].getSize().x, 0), Vector2f(400, 400));
+            customConstraint.showScriptVisual(window, font, ui[0].getPosition() + Vector2f(ui[0].getSize().x, 0), Vector2f(400, 400));
         window.display();
 
     }
@@ -765,7 +1514,7 @@ void onRightClick()
     switch(mode)
     {
         case(16):
-            gm.customConstraint.removeNode();
+            customConstraint.removeNode();
             break;
 
     }
@@ -840,7 +1589,7 @@ void onHold()
     }
     else if(mode == 16 && isHolding)
     {
-        gm.customConstraint.grab(mousePos);
+        customConstraint.grab(mousePos);
     }
 }
 void onLeftClick()
@@ -908,7 +1657,7 @@ void onLeftClick()
             loadContraption(mousePos, false);
             break;
         case(16):
-            gm.customConstraint.link();
+            customConstraint.link();
             break;
         }
         if(getSelectedBall() == -1)
