@@ -5,7 +5,8 @@
 #include <time.h>
 #include <vector>
 #include <fstream>
-
+#include <map>
+#include <lua.hpp>
 
 using namespace sf;
 using namespace std;
@@ -345,40 +346,40 @@ struct customConstraintScript
                             return "(" + inputs[0] + "/" + inputs[1] + ")";
                             break;
                         case(4):
-                            return "^(" + inputs[0] + "," + inputs[1] + ")";
+                            return "pow(" + inputs[0] + "," + inputs[1] + ")";
                             break;
                         case(5):
-                            return "%(" + inputs[0] + "," + inputs[1] + ")";
+                            return "(" + inputs[0] + "%" + inputs[1] + ")";
                             break;
                         case(6):
-                            return "~(" + inputs[0] + ")";
+                            return "sqrt(" + inputs[0] + ")";
                             break;
                         case(7):
-                            return "°(" + inputs[0] + "," + inputs[1] + ")";
+                            return "atan2(" + inputs[0] + "," + inputs[1] + ")";
                             break;
                         case(8):
-                            return "s(" + inputs[0] + ")";
+                            return "sin(" + inputs[0] + ")";
                             break;
                         case(9):
-                            return "c(" + inputs[0] + ")";
+                            return "cos(" + inputs[0] + ")";
                             break;
                         case(10):
-                            return "t(" + inputs[0] + ")";
+                            return "tan(" + inputs[0] + ")";
                             break;
                         case(11):
                             return "r(" + inputs[0] + ")";
                             break;
                         case(12):
-                            return "x";
+                            return "x1";
                             break;
                         case(13):
-                            return "y";
+                            return "y1";
                             break;
                         case(14):
-                            return "X";
+                            return "x2";
                             break;
                         case(15):
-                            return "Y";
+                            return "y2";
                             break;
                         case(16):
                             return "" + toString(value) + "";
@@ -386,7 +387,7 @@ struct customConstraintScript
                         case(17):
                             return toString(clock());
                         case(18):
-                            return "~(" + inputs[0] + "*" + inputs[0] + "+" + inputs[1] + "*" + inputs[1] + ")";
+                            return "sqrt(" + inputs[0] + "*" + inputs[0] + "+" + inputs[1] + "*" + inputs[1] + ")";
 
                             break;
                         case(19):
@@ -431,11 +432,50 @@ struct customConstraintScript
         vector<RectangleShape> rectangles;
         vector<string> instructions;
         vector<string> nodeLabels = {"Add", "Sub", "Mult", "Div", "Pow", "Mod", "Sqrt","Atan2", "Sin", "Cos", "Tan", "Round", "x1", "y1", "x2", "y2", "Const", "Time", "Pyth", "Pi"};
+        string cmd;
+        string vars;
+        lua_State *lua = luaL_newstate();
+
         customConstraintScript()
         {
-
+            luaL_openlibs(lua);
         }
 
+        Vector2f getPos(Vector2f p1, Vector2f p2)
+        {
+        stringstream ss;
+        string x1;
+        string y1;
+        string x2;
+        string y2;
+        string time;
+        ss << p1.x;
+        ss >> x1;
+        ss << p1.y;
+        ss >> y1;
+        ss << p2.x;
+        ss >> x2;
+        ss << p2.y;
+        ss >> y2;
+        ss << clock();
+        ss >> time;
+
+        vars = "x1 =" + x1 + "\ny1 = " + y1 + "\nx2 = " + x2 + "\ny2 = " + y2 + "\ntime = " + time;
+        string combined = vars + "\n" + cmd;
+        cout << combined << endl;
+        Vector2f result;
+        luaL_dostring(lua, combined.c_str());
+        lua_pushinteger(lua, 1);
+        lua_gettable(lua, -2);
+        result.x = (lua_tonumber(lua, -1));
+        lua_pop(lua, 1);
+        lua_pushinteger(lua, 2);
+        lua_gettable(lua, -2);
+        result.y = lua_tonumber(lua, -1);
+        lua_pop(lua, 1);
+        return result;
+        //b.sprite.setPosition(customConstraint.nodes[0].getOutput(customConstraint.nodes, b.sprite.getPosition(), gm.balls[b.anchorPointsIndex[c]].sprite.getPosition()));
+        }
         void unLink()
         {
             for(int i = 0; i < nodes.size(); i++)
@@ -568,8 +608,10 @@ struct customConstraintScript
                                     file << n.outputIndexes[output] << endl;
                             }
                             file.close();
-                            cout << "outX <- " << nodes[0].getCompiled(nodes, 0) << endl;
-                            cout << "outY <- " << nodes[0].getCompiled(nodes, 1) << endl;
+                            vars = "x1 = 0\ny1 = 0\nx2 = 0\ny2 = 0\ntime = 0";
+                            cmd = "return {" + nodes[0].getCompiled(nodes, 0) + "," + nodes[0].getCompiled(nodes, 1) + "}";
+                            cout << "return {" << nodes[0].getCompiled(nodes, 0) << "," << nodes[0].getCompiled(nodes, 1) << "}";
+
                          }, "Compile");
             ui.addButton(currentPos + Vector2f(300, 0), Vector2f(100, 50),
                          [this]
@@ -665,7 +707,7 @@ struct customConstraintScript
                 }
             }
         }
-        void updateUI(Event e, RenderWindow& window)
+        void updateUI(const optional<Event> e, RenderWindow& window)
         {
             currentMousePos = window.mapPixelToCoords(Vector2i(Mouse::getPosition(window).x,Mouse::getPosition(window).y));
             ui.dropDowns[0].elementsNames = nodeLabels;
@@ -676,26 +718,26 @@ struct customConstraintScript
                 b.pos = currentPos + Vector2f(100 * ++o, 0);
             }
             ui.updateElements(e, window);
-            if(e.is<Event::KeyPressed>() && e.getIf<Event::KeyPressed>() -> code == Keyboard::Key::Left && currentIndex > 0)
+            if(e->is<Event::KeyPressed>() && e->getIf<Event::KeyPressed>() -> code == Keyboard::Key::Left && currentIndex > 0)
                 currentIndex--;
-            else if(e.is<Event::KeyPressed>() && e.getIf<Event::KeyPressed>() -> code == Keyboard::Key::Right)
+            else if(e->is<Event::KeyPressed>() && e->getIf<Event::KeyPressed>() -> code == Keyboard::Key::Right)
                 currentIndex++;
             for(int i = 0; i < nodes.size(); i++)
             {
-                if(e.is<Event::KeyPressed>() && e.getIf<Event::KeyPressed>() -> code == Keyboard::Key::Up)
+                if(e->is<Event::KeyPressed>() && e->getIf<Event::KeyPressed>() -> code == Keyboard::Key::Up)
                 {
                 if(nodes[i].label == "const" && isHovering(i))
                         nodes[i].value++;
 
 
                 }
-                else if(e.is<Event::KeyPressed>() && e.getIf<Event::KeyPressed>() -> code == Keyboard::Key::Down)
+                else if(e->is<Event::KeyPressed>() && e->getIf<Event::KeyPressed>() -> code == Keyboard::Key::Down)
                 {
                     if(nodes[i].label == "const" && isHovering(i))
                         nodes[i].value--;
                 }
             }
-            if(e.is<Event::MouseButtonReleased>())
+            if(e->is<Event::MouseButtonReleased>())
             {
                 grabbedIndex = -1;
             }
@@ -887,6 +929,8 @@ int main()
     {
         while(const std::optional e = window.pollEvent())
         {
+
+
             customConstraint.updateUI(e, window);
             if(e->is<Event::Closed>())
                 window.close();
@@ -905,11 +949,11 @@ int main()
             if(e->is<Event::KeyReleased>())
             {
                 int selected = getSelectedBall();
-                if(e->getIf<Event::KeyPressed>() -> code == Keyboard::Key::F11)
+                if(e->getIf<Event::KeyReleased>() -> code == Keyboard::Key::F11)
                 {
 
                 }
-                if(e->getIf<Event::KeyPressed>() -> code == Keyboard::Key::Delete)
+                if(e->getIf<Event::KeyReleased>() -> code == Keyboard::Key::Delete)
                 {
                     for(unsigned int i = 0; i < gm.rectAmount; i++)
                         if(UIselection(gm.rects[i]))
@@ -923,9 +967,9 @@ int main()
                     multSelection.clear();
                     customConstraint.unLink();
                 }
-                if(e->getIf<Event::KeyPressed>() -> code == Keyboard::Key::R && mode == 10)
+                if(e->getIf<Event::KeyReleased>() -> code == Keyboard::Key::R && mode == 10)
                     gm.createRect(selectionRect.getPosition(), selectionRect.getSize());
-                if(e->getIf<Event::KeyPressed>() -> code == Keyboard::Key::Up)
+                if(e->getIf<Event::KeyReleased>() -> code == Keyboard::Key::Up)
                 {
                     switch(mode)
                     {
@@ -934,7 +978,7 @@ int main()
                         break;
                     }
                 }
-                if(e->getIf<Event::KeyPressed>() -> code == Keyboard::Key::Down)
+                if(e->getIf<Event::KeyReleased>() -> code == Keyboard::Key::Down)
                 {
                     switch(mode)
                     {
@@ -943,7 +987,7 @@ int main()
                         break;
                     }
                 }
-                if(e->getIf<Event::KeyPressed>() -> code == Keyboard::Key::Left)
+                if(e->getIf<Event::KeyReleased>() -> code == Keyboard::Key::Left)
                     switch(mode)
                     {
                     case(2):
@@ -977,7 +1021,7 @@ int main()
                             contraptionIndex--;
                         break;
                     }
-                if(e->getIf<Event::KeyPressed>() -> code == Keyboard::Key::Right)
+                if(e->getIf<Event::KeyReleased>() -> code == Keyboard::Key::Right)
                     switch(mode)
                     {
                     case(2):
@@ -1010,12 +1054,12 @@ int main()
             }
             if(e->is<Event::MouseWheelScrolled>())
             {
-                int scroll = e.mouseWheelScroll.delta;
+                int scroll = e->getIf<Event::MouseWheelScrolled>() -> delta;
                 if(mode == 8)
                 {
                     scroll *= 100;
                     float ratioy = camera.getSize().y/camera.getSize().x;
-                    camera.setSize(camera.getSize().x-scroll,camera.getSize().y - scroll*ratioy);
+                    camera.setSize(Vector2f(camera.getSize().x-scroll,camera.getSize().y - scroll*ratioy));
                 }
                 else if(mode==11)
                 {
@@ -1032,16 +1076,16 @@ int main()
                         rad+=scroll;
                 }
             }
-            if(e.type == Event::MouseButtonPressed)
+            if(e->is<Event::MouseButtonPressed>())
             {
-                if(e.mouseButton.button == Mouse::Left)
+                if(e->getIf<Event::MouseButtonPressed>() -> button == Mouse::Button::Left)
                 {
                     isHolding = true;
                     onLeftClick();
                 }
-                else if(e.mouseButton.button == Mouse::Middle)
+                else if(e->getIf<Event::MouseButtonPressed>() -> button == Mouse::Button::Middle)
                     isMovingCamera = true;
-                else if(e.mouseButton.button == Mouse::Right)
+                else if(e->getIf<Event::MouseButtonPressed>() -> button == Mouse::Button::Right)
                 {
                     onRightClick();
                     int selected = getSelectedBall();
@@ -1059,14 +1103,14 @@ int main()
                 if(UIselection(buttons[4]))
                 {
                     shouldBeStatic = !shouldBeStatic;
-                    buttons[4].setTextureRect({shouldBeStatic? 32:16,shouldBeStatic? yPos:16,16,16});
+                    buttons[4].setTextureRect(IntRect({shouldBeStatic? 32:16,shouldBeStatic? yPos:16},{16,16}));
                 }
                 else if(UIselection(buttons[6]))
                     shouldShow = !shouldShow;
                 else if(UIselection(buttons[11]))
                 {
                     isExplosionReversed = !isExplosionReversed;
-                    buttons[11].setTextureRect({isExplosionReversed? 16:32, isExplosionReversed? yPos:48,16,16 });
+                    buttons[11].setTextureRect(IntRect({isExplosionReversed? 16:32, isExplosionReversed? yPos:48},{16,16}));
                 }
                 else if(UIselection(buttons[13]))
                 {
@@ -1085,22 +1129,23 @@ int main()
                 else if(UIselection(buttons[16]))
                     showScript = !showScript;
             }
-            if(e.type == Event::MouseButtonReleased)
+            if(e->is<Event::MouseButtonReleased>())
             {
-                if(e.mouseButton.button == Mouse::Left)
+                if(e->getIf<Event::MouseButtonReleased>() -> button == Mouse::Button::Left)
                 {
                     targetIndex = -1;
                     firstBall= -1;
                     currentChain = 0;
                     isHolding= false;
                 }
-                else if(e.mouseButton.button == Mouse::Middle)
+                else if(e->getIf<Event::MouseButtonReleased>() -> button == Mouse::Button::Middle)
                     isMovingCamera = false;
             }
-            if(e.type == Event::KeyPressed && e.key.code == Keyboard::Space)
+            if(e->is<Event::KeyPressed>() && e->getIf<Event::KeyPressed>() -> code == Keyboard::Key::Space)
                 isPaused = !isPaused;
         }
         CircleShape preview;
+        Text paramText(font, "", 30);
         switch(mode)
         {
         case(2):
@@ -1143,7 +1188,9 @@ int main()
                 {
                     if(b.constraintMode[c] == "Custom")
                     {
-                        b.sprite.setPosition(customConstraint.nodes[0].getOutput(customConstraint.nodes, b.sprite.getPosition(), gm.balls[b.anchorPointsIndex[c]].sprite.getPosition()));
+
+                        //b.sprite.setPosition(customConstraint.nodes[0].getOutput(customConstraint.nodes, b.sprite.getPosition(), gm.balls[b.anchorPointsIndex[c]].sprite.getPosition()));
+                        b.sprite.setPosition(customConstraint.getPos(b.sprite.getPosition(), gm.balls[b.anchorPointsIndex[c]].sprite.getPosition()));
                     }
                 }
             }
@@ -1167,14 +1214,14 @@ int main()
             }
             if(gm.balls[i].sprite.getPosition().y >= ui[1].getPosition().y - gm.balls[i].sprite.getRadius())
             {
-                gm.balls[i].sprite.setPosition(gm.balls[i].sprite.getPosition().x,ui[1].getPosition().y - gm.balls[i].sprite.getRadius());
+                gm.balls[i].sprite.setPosition(Vector2f(gm.balls[i].sprite.getPosition().x,ui[1].getPosition().y - gm.balls[i].sprite.getRadius()));
                 gm.balls[i].updateFriction();
             }
             else
             {
                 gm.balls[i].acc.x = 0;
             }
-            VertexArray line(LinesStrip, 2);
+            VertexArray line(PrimitiveType::LineStrip, 2);
             for(unsigned int c =0; c<gm.balls[i].anchorCount; c++)
             {
 
@@ -1195,15 +1242,15 @@ int main()
             case(5):
             case(9):
                 preview.setRadius(rad);
-                preview.setPosition(mousePos.x,mousePos.y);
-                preview.setOrigin(rad,rad);
+                preview.setPosition(Vector2f(mousePos.x,mousePos.y));
+                preview.setOrigin(Vector2f(rad,rad));
                 preview.setFillColor(Color(50,50,50,50));
                 window.draw(preview);
                 break;
             case(11):
                 preview.setRadius(explosionRad);
-                preview.setPosition(mousePos.x, mousePos.y);
-                preview.setOrigin(explosionRad,explosionRad);
+                preview.setPosition(Vector2f(mousePos.x, mousePos.y));
+                preview.setOrigin(Vector2f(explosionRad,explosionRad));
                 preview.setFillColor(Color(255,0,0,50));
                 window.draw(preview);
                 break;
@@ -1213,7 +1260,7 @@ int main()
         }
         if(mode == 10 && isHolding)
             window.draw(selectionRect);
-        int selected =getSelectedBall();
+        int selected = getSelectedBall();
         for(auto& s : multSelection)
             drawOutline(s);
         if(selected>-1)
@@ -1318,7 +1365,7 @@ void drag()
     }
     else if(isHolding && targetIndex != -1)
     {
-        gm.balls[targetIndex].sprite.move((mousePos.x-gm.balls[targetIndex].sprite.getPosition().x)/2, (mousePos.y-gm.balls[targetIndex].sprite.getPosition().y)/2);
+        gm.balls[targetIndex].sprite.move(Vector2f((mousePos.x-gm.balls[targetIndex].sprite.getPosition().x)/2, (mousePos.y-gm.balls[targetIndex].sprite.getPosition().y)/2));
     }
     else if(!isHolding && targetIndex !=-1)
     {
@@ -1352,7 +1399,6 @@ int fps()
         lastFps = fps;
         fps = 0;
         t1 = clock();
-
     }
     else
     {
@@ -1371,11 +1417,11 @@ void applyUIAnchors()
 {
     Vector2f origin = window.mapPixelToCoords(Vector2i(0,0));
     ui[0].setPosition(origin);
-    ui[1].setPosition(window.mapPixelToCoords(Vector2i(0,1080)).x,0);
+    ui[1].setPosition(Vector2f(window.mapPixelToCoords(Vector2i(0,1080)).x,0));
     ui[0].setSize(Vector2f(camera.getSize().x/(940/200),camera.getSize().y));
     ui[1].setSize(Vector2f(camera.getSize().x, camera.getSize().y));
-    paramText.setPosition(window.mapPixelToCoords(Vector2i((940),paramText.getCharacterSize())));
-    paramText.setScale(Vector2f(camera.getSize().x / 940, camera.getSize().y/540));
+    //paramText.setPosition(Vector2f(window.mapPixelToCoords(Vector2i((940),paramText.getCharacterSize()))));
+    //paramText.setScale(Vector2f(camera.getSize().x / 940, camera.getSize().y/540));
     Vector2f ratioSize = Vector2f(940/60,540/60);
 
     for(unsigned int i = 0; i<buttons.size(); i++)
@@ -1389,7 +1435,7 @@ void multSelect()
 {
     if(!selectionOriginDefined)
     {
-        selectionRect.setPosition(mousePos.x, mousePos.y);
+        selectionRect.setPosition(Vector2f(mousePos.x, mousePos.y));
         selectionRect.setSize(Vector2f(0,0));
         selectionOriginDefined = true;
     }
@@ -1412,12 +1458,12 @@ void drawOutline(int index)
     int ballRadius =gm.balls[index].sprite.getRadius();
     CircleShape selectionCircle = CircleShape(ballRadius);
     selectionCircle.setFillColor(Color::Green);
-    selectionCircle.setOrigin(ballRadius,ballRadius);
+    selectionCircle.setOrigin(Vector2f(ballRadius,ballRadius));
     selectionCircle.setPosition(gm.balls[index].sprite.getPosition());
     window.draw(selectionCircle);
     selectionCircle.setRadius(ballRadius-3);
     selectionCircle.setFillColor(defaultColor);
-    selectionCircle.setOrigin(ballRadius-3,ballRadius-3);
+    selectionCircle.setOrigin(Vector2f(ballRadius-3,ballRadius-3));
     window.draw(selectionCircle);
 }
 void saveContraption()
@@ -1476,7 +1522,7 @@ void loadContraption(Vector2f offset, bool isPreview)
         {
             CircleShape preview(radius);
             preview.setPosition(Vector2f(pos+offset));
-            preview.setOrigin(radius,radius);
+            preview.setOrigin(Vector2f(radius,radius));
             preview.setFillColor(Color(0,0,0,50));
             window.draw(preview);
             for(unsigned int j = 0; j < anchorCount; j++)
@@ -1488,7 +1534,7 @@ void loadContraption(Vector2f offset, bool isPreview)
         {
             gm.createBall(Vector2f(pos+offset),isStatic == 1 ? true : false, true);
             gm.balls[gm.ballAmount-1].sprite.setRadius(radius);
-            gm.balls[gm.ballAmount-1].sprite.setOrigin(radius,radius);
+            gm.balls[gm.ballAmount-1].sprite.setOrigin(Vector2f(radius,radius));
             gm.balls[gm.ballAmount-1].sprite.setFillColor(defaultColor);
             gm.balls[gm.ballAmount-1].friction = friction;
             gm.balls[gm.ballAmount-1].rotationSpeed = rotationSpeed;
@@ -1631,16 +1677,16 @@ void onLeftClick()
             gm.createBall(origin, false, true);
             gm.balls[gm.ballAmount-1].sprite.setPosition(origin);
             gm.balls[gm.ballAmount-1].sprite.setRadius(5);
-            gm.balls[gm.ballAmount-1].sprite.setOrigin(5,5);
+            gm.balls[gm.ballAmount-1].sprite.setOrigin(Vector2f(5,5));
             gm.balls[gm.ballAmount-1].sprite.setFillColor(defaultColor);
             gm.balls[gm.ballAmount-1].rotationSpeed = motorSpeed;
             double ratioAngle = (double)360/points;
             for(unsigned int i = 0; i<points; i++)
             {
                 gm.createBall(origin, false, true);
-                gm.balls[gm.ballAmount-1].sprite.setPosition(origin.x+sin(gm.ballAmount*ratioAngle*rad) * 50, origin.y+cos(gm.ballAmount*ratioAngle*rad) * 50 );
+                gm.balls[gm.ballAmount-1].sprite.setPosition(Vector2f(origin.x+sin(gm.ballAmount*ratioAngle*rad) * 50, origin.y+cos(gm.ballAmount*ratioAngle*rad) * 50));
                 gm.balls[gm.ballAmount-1].sprite.setRadius(5);
-                gm.balls[gm.ballAmount-1].sprite.setOrigin(5,5);
+                gm.balls[gm.ballAmount-1].sprite.setOrigin(Vector2f(5,5));
                 gm.balls[gm.ballAmount-1].sprite.setFillColor(defaultColor);
                 gm.balls[gm.ballAmount-1].rotationSpeed = motorSpeed;
                 gm.balls[gm.ballAmount-1].friction=1.0;
