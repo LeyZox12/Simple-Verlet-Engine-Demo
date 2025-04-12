@@ -76,6 +76,16 @@ RectangleShape cur(Vector2f(5,5));
 RectangleShape ui[2] = {RectangleShape(Vector2f(300,540)), RectangleShape(Vector2f(960,100))};
 RectangleShape selectionRect;
 View camera({0,0},{960,540});
+
+string toStr(float v)
+{
+    stringstream ss;
+    string out;
+    ss << v;
+    ss >> out;
+    return out;
+}
+
 struct customConstraintScript
     {
         class node
@@ -346,25 +356,25 @@ struct customConstraintScript
                             return "(" + inputs[0] + "/" + inputs[1] + ")";
                             break;
                         case(4):
-                            return "pow(" + inputs[0] + "," + inputs[1] + ")";
+                            return "math.pow(" + inputs[0] + "," + inputs[1] + ")";
                             break;
                         case(5):
                             return "(" + inputs[0] + "%" + inputs[1] + ")";
                             break;
                         case(6):
-                            return "sqrt(" + inputs[0] + ")";
+                            return "math.sqrt(" + inputs[0] + ")";
                             break;
                         case(7):
-                            return "atan2(" + inputs[0] + "," + inputs[1] + ")";
+                            return "math.atan2(" + inputs[0] + "," + inputs[1] + ")";
                             break;
                         case(8):
-                            return "sin(" + inputs[0] + ")";
+                            return "math.sin(" + inputs[0] + ")";
                             break;
                         case(9):
-                            return "cos(" + inputs[0] + ")";
+                            return "math.cos(" + inputs[0] + ")";
                             break;
                         case(10):
-                            return "tan(" + inputs[0] + ")";
+                            return "math.tan(" + inputs[0] + ")";
                             break;
                         case(11):
                             return "r(" + inputs[0] + ")";
@@ -385,16 +395,16 @@ struct customConstraintScript
                             return "" + toString(value) + "";
                             break;
                         case(17):
-                            return toString(clock());
+                            return "time";
                         case(18):
-                            return "sqrt(" + inputs[0] + "*" + inputs[0] + "+" + inputs[1] + "*" + inputs[1] + ")";
+                            return "math.sqrt(" + inputs[0] + "*" + inputs[0] + "+" + inputs[1] + "*" + inputs[1] + ")";
 
                             break;
                         case(19):
-                            return "|(" + inputs[0] + ")";
+                            return "abs(" + inputs[0] + ")";
                             break;
                         case(20):
-                            return "3.1415926";
+                            return "3.141592654";
                     }
                 }
             }
@@ -443,26 +453,11 @@ struct customConstraintScript
 
         Vector2f getPos(Vector2f p1, Vector2f p2)
         {
-        stringstream ss;
-        string x1;
-        string y1;
-        string x2;
-        string y2;
-        string time;
-        ss << p1.x;
-        ss >> x1;
-        ss << p1.y;
-        ss >> y1;
-        ss << p2.x;
-        ss >> x2;
-        ss << p2.y;
-        ss >> y2;
-        ss << clock();
-        ss >> time;
 
-        vars = "x1 =" + x1 + "\ny1 = " + y1 + "\nx2 = " + x2 + "\ny2 = " + y2 + "\ntime = " + time;
+
+        vars = "x1 =" + toStr(p1.x) + "\ny1 = " + toStr(p1.y)+ "\nx2 = " + toStr(p2.x) + "\ny2 = " + toStr(p2.y) + "\ntime = " + toStr(clock());
         string combined = vars + "\n" + cmd;
-        cout << combined << endl;
+        //cout << combined << endl;
         Vector2f result;
         luaL_dostring(lua, combined.c_str());
         lua_pushinteger(lua, 1);
@@ -770,7 +765,7 @@ struct customConstraintScript
         }
         void showScriptVisual(RenderWindow& window, Font font, Vector2f pos, Vector2f sizeR)
         {
-            Text label(font, "", 20);
+            static Text label(font, "", 20);
             label.setScale(Vector2f(0.5, 0.5));
             label.setPosition(Vector2f(pos.x, pos.y + 70));
             stringstream ss;
@@ -793,15 +788,14 @@ struct customConstraintScript
             scriptRect.setFillColor(Color(50, 50, 50, 200));
             window.draw(scriptRect);
             window.draw(label);
+            RectangleShape nodeRect;
+            nodeRect.setFillColor(Color::Black);
             for(int i = 0; i < nodes.size(); i++)
             {
-                RectangleShape nodeRect;
-                nodeRect.setPosition(pos + nodes[i].offset);
-                nodeRect.setFillColor(Color::Black);
                 nodeRect.setSize(Vector2f(nodeSizeX, centerOffset + 10 * nodes[i].inputCount));
+                nodeRect.setPosition(pos + nodes[i].offset);
                 window.draw(nodeRect);
                 rectangles.push_back(nodeRect);
-
                 label.setPosition(pos + nodes[i].offset);
                 if(nodes[i].label == "const")
                 {
@@ -818,14 +812,14 @@ struct customConstraintScript
 
                 label.setFillColor(Color::White);
                 window.draw(label);
-                ui.displayElements(window);
             }
+
             for(int i = 0; i < nodes.size(); i++)
             {
-                CircleShape nodeCircle(5);
-                nodeCircle.setFillColor(Color(0, 0, 0));
-                nodeCircle.setOrigin(Vector2f(5, 5));
-                VertexArray line(PrimitiveType::LineStrip, 2);
+                            CircleShape nodeCircle(5);
+            nodeCircle.setFillColor(Color(0, 0, 0));
+            nodeCircle.setOrigin(Vector2f(5, 5));
+            VertexArray line(PrimitiveType::LineStrip, 2);
                 for(int n = 0; n < nodes[i].inputCount; n++)
                 {
                     nodeCircle.setPosition(rectangles[i].getPosition() + Vector2f(0, centerOffset + 10 * n));

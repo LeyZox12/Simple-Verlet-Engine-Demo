@@ -360,8 +360,7 @@ class UIutils
         void addDropDown(Vector2f pos, Vector2f sizeRect, vector<string> elements, int maxElementPage, string baseText, Color baseColor, Color elementColor, Color textColor, Color selectedColor);
         void addSlider(Vector2f pos, Vector2f sizeRect, float maxVal, bool hasKnob, bool isValueFixed, Color backgroundColor, Color fillColor, Color textColor);
         void addTextZone(Vector2f pos, Vector2f sizeRect, int txtSize, Color rectColor, Color textColor);
-
-        void updateElements(Event e, RenderWindow &window);
+        void updateElements(optional<Event> e, RenderWindow &window);
         void displayElements(RenderWindow &window);
     protected:
 

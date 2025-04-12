@@ -60,10 +60,10 @@ void UIutils::addTextZone(Vector2f pos, Vector2f sizeRect, int txtSize)
     newTextZone.txtSize = txtSize;
     textZones.push_back(newTextZone);
 }
-void UIutils::updateElements(Event e, RenderWindow &window)
+void UIutils::updateElements(optional<Event> e, RenderWindow &window)
 {
 
-    if(e.is<Event::MouseButtonPressed>() && e.getIf<Event::MouseButtonPressed>() -> button == Mouse::Button::Left)
+    if(e->is<Event::MouseButtonPressed>() && e->getIf<Event::MouseButtonPressed>() -> button == Mouse::Button::Left)
     {
         Vector2i mousepos = Vector2i(window.mapPixelToCoords(Mouse::getPosition(window)));
         for(int i = 0; i < buttons.size(); i++)
@@ -75,22 +75,22 @@ void UIutils::updateElements(Event e, RenderWindow &window)
         for(int i = 0; i < sliders.size(); i++)
             sliders[i].updateValue(mousepos);
     }
-    else if(e.is<Event::TextEntered>())
+    else if(e->is<Event::TextEntered>())
     {
         for(int i = 0; i < textZones.size(); i++)
         {
-            int unicodeVal = e.getIf<Event::TextEntered>() -> unicode;
+            int unicodeVal = e->getIf<Event::TextEntered>() -> unicode;
             if(unicodeVal < 128)
             {
                 textZones[i].write(unicodeVal);
             }
         }
     }
-    else if(e.is<Event::MouseWheelScrolled>())
+    else if(e->is<Event::MouseWheelScrolled>())
     {
         Vector2i mousepos = Vector2i(window.mapPixelToCoords(Mouse::getPosition(window)));
         for(int i = 0; i < dropDowns.size(); i++)
-            dropDowns[i].scroll(e.getIf<Event::MouseWheelScrolled>() -> delta, mousepos);
+            dropDowns[i].scroll(e->getIf<Event::MouseWheelScrolled>() -> delta, mousepos);
     }
 }
 
